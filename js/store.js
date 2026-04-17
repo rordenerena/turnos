@@ -57,6 +57,7 @@ function storeCreateCalendar(name) {
   const cal = {
     id: uuid(),
     name: name || 'Mi calendario',
+    version: 1,
     shifts: {},
     events: {},
     patterns: [],
