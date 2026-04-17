@@ -67,7 +67,7 @@ async function shareNative() {
   try {
     await navigator.share({
       title: 'Calendario de Turnos',
-      text: 'Te comparto mi calendario de turnos',
+      text: `Te comparto mi calendario de turnos "${currentCal.name}":`,
       url: url,
     });
   } catch (e) {
