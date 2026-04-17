@@ -129,9 +129,16 @@ async function gdriveUploadAndShare(cal) {
   return fileId;
 }
 
-/* Read a public Drive file (needs API key for CORS) */
+/* Read a public Drive file — use OAuth token if logged in, API key otherwise */
 async function gdriveReadPublic(fileId) {
-  const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=AIzaSyDQ0i7vJNDF9YxF01Xv7xqmmaJReFwvocY`);
+  const headers = {};
+  let url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+  if (gdriveToken) {
+    headers['Authorization'] = `Bearer ${gdriveToken}`;
+  } else {
+    url += '&key=AIzaSyDQ0i7vJNDF9YxF01Xv7xqmmaJReFwvocY';
+  }
+  const resp = await fetch(url, { headers });
   if (!resp.ok) {
     const err = await resp.text();
     throw new Error(`Drive ${resp.status}: ${err.substring(0, 100)}`);
