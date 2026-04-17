@@ -11,7 +11,10 @@ function toast(msg) {
 function switchTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === `tab-${tab}`));
-  if (tab === 'shared') renderImportedList();
+  if (tab === 'shared') {
+    renderImportedList();
+    document.getElementById('qr-container').classList.add('hidden');
+  }
   if (tab === 'patterns') {
     renderPatternsList();
     // Initialize month input to current calendar view month
