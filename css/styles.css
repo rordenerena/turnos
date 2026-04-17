@@ -62,12 +62,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 
 /* Pattern */
 #pattern-sequence{display:flex;flex-wrap:wrap;gap:4px;min-height:28px;padding:6px;background:var(--bg);border-radius:var(--radius);margin-bottom:6px}
-#pattern-sequence .seq-item{padding:2px 8px;border-radius:4px;color:#fff;font-weight:700;font-size:.8rem}
-#pattern-buttons{display:flex;gap:4px;flex-wrap:wrap}
+#pattern-sequence .seq-item{padding:2px 8px;border-radius:4px;color:#fff;font-weight:700;font-size:.8rem;min-width:28px;text-align:center}
+#pattern-buttons{display:flex;gap:6px;flex-wrap:wrap}
 #pattern-mode-select{display:flex;gap:16px;margin:8px 0}
 #pattern-mode-select label{display:inline;font-weight:normal;font-size:.85rem}
 .pattern-item{background:var(--card);padding:8px;border-radius:var(--radius);border:1px solid var(--border);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;font-size:.8rem}
-.pattern-item .seq{display:flex;gap:2px;flex-wrap:wrap}
+.pattern-item .seq{display:flex;gap:4px;flex-wrap:wrap}
+.pattern-item .seq .seq-item{min-width:28px;text-align:center}
 
 /* Share */
 #qr-container{text-align:center;margin:12px 0}
