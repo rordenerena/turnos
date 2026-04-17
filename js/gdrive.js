@@ -129,11 +129,9 @@ async function gdriveUploadAndShare(cal) {
   return fileId;
 }
 
-/* Read a public Drive file (no auth needed) */
+/* Read a public Drive file (no auth needed, uses API key) */
 async function gdriveReadPublic(fileId) {
-  const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-    headers: { Accept: 'application/json' },
-  });
+  const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=AIzaSyDQ0i7vJNDF9YxF01Xv7xqmmaJReFwvocY`);
   if (!resp.ok) throw new Error('No se pudo leer el archivo público');
   return resp.json();
 }
