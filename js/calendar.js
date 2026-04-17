@@ -37,7 +37,11 @@ function calRender() {
     html += `<div class="cal-day${ds === todayStr ? ' today' : ''}" onclick="dayClick('${ds}')">`;
     html += `<div class="day-num">${d}</div>`;
     if (shifts.length) {
-      shifts.forEach(s => html += `<div class="day-shift s-${s}">${s}</div>`);
+      shifts.forEach(s => {
+        const t = s.type || s;
+        const n = s.note ? ` <small>${s.note}</small>` : '';
+        html += `<div class="day-shift s-${t}">${t}${n}</div>`;
+      });
     }
     if (evts.length) html += `<div class="day-events"><span class="event-dot"></span>${evts.length > 1 ? evts.length : evts[0].text.substring(0, 10)}</div>`;
     html += '</div>';
@@ -56,14 +60,16 @@ function calRender() {
   document.querySelectorAll('.tab[data-tab="patterns"],.tab[data-tab="shared"],.tab[data-tab="settings"]').forEach(t => t.classList.toggle('hidden', ro));
 }
 
+/* Normalize: "M" → {type:"M",note:""}, {type:"M",note:"x"} stays */
+function normShift(s) { return typeof s === 'string' ? { type: s, note: '' } : s; }
+
 function computeEffectiveShifts() {
   if (!currentCal) return {};
   const result = {};
   const all = currentCal.shifts || {};
 
-  // Copy manual shifts — including empty arrays (explicit "no shift" override)
   for (const ds in all) {
-    result[ds] = [...(all[ds] || [])];
+    result[ds] = (all[ds] || []).map(normShift);
   }
 
   if (!currentCal.patterns) return result;
@@ -82,7 +88,7 @@ function computeEffectiveShifts() {
       if (!(ds in result)) {
         const daysSince = Math.floor((cur - start) / 86400000);
         const idx = ((daysSince % p.sequence.length) + p.sequence.length) % p.sequence.length;
-        result[ds] = [p.sequence[idx]];
+        result[ds] = [{ type: p.sequence[idx], note: '' }];
       }
       cur.setDate(cur.getDate() + 1);
     }
@@ -104,20 +110,30 @@ function setShift(shift) {
   if (!currentCal.shifts) currentCal.shifts = {};
   if (!currentCal.shifts[selectedDate]) currentCal.shifts[selectedDate] = [];
 
-  const shifts = currentCal.shifts[selectedDate];
+  const shifts = currentCal.shifts[selectedDate].map(normShift);
 
   if (shift === null) {
-    // Explicit empty — overrides pattern for this day
     currentCal.shifts[selectedDate] = [];
   } else {
-    const idx = shifts.indexOf(shift);
+    const idx = shifts.findIndex(s => s.type === shift);
     if (idx >= 0) shifts.splice(idx, 1);
-    else shifts.push(shift);
+    else shifts.push({ type: shift, note: '' });
+    currentCal.shifts[selectedDate] = shifts;
   }
 
   storeSave(currentCal);
   calRender();
   modalRenderShift();
+}
+
+function setShiftNote(type, note) {
+  if (!currentCal || currentCal.readonly) return;
+  const shifts = (currentCal.shifts[selectedDate] || []).map(normShift);
+  const s = shifts.find(s => s.type === type);
+  if (s) s.note = note.trim();
+  currentCal.shifts[selectedDate] = shifts;
+  storeSave(currentCal);
+  calRender();
 }
 
 /* Patterns */

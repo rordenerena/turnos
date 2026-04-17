@@ -1,4 +1,4 @@
-const CACHE_NAME = 'turnos-v3';
+const CACHE_NAME = 'turnos-v4';
 const ASSETS = ['./', './index.html', './css/styles.css', './js/store.js', './js/calendar.js', './js/events.js', './js/share.js', './js/app.js', './manifest.json'];
 
 self.addEventListener('install', e => {

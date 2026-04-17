@@ -20,10 +20,24 @@ function modalClose(e) {
 function modalRenderShift() {
   const effective = computeEffectiveShifts();
   const current = effective[selectedDate] || [];
+  const types = current.map(s => s.type || s);
   document.querySelectorAll('#modal-shift-buttons .btn').forEach(b => {
     const m = b.getAttribute('onclick')?.match(/'(\w)'/);
-    b.style.outline = (m && current.includes(m[1])) ? '3px solid var(--text)' : 'none';
+    b.style.outline = (m && types.includes(m[1])) ? '3px solid var(--text)' : 'none';
   });
+  // Render note inputs for active shifts
+  const notesEl = document.getElementById('modal-shift-notes');
+  if (!notesEl) return;
+  const ro = currentCal && currentCal.readonly;
+  if (!current.length) { notesEl.innerHTML = ''; return; }
+  notesEl.innerHTML = current.map(s => {
+    const t = s.type || s;
+    return `<div class="shift-note-row">
+      <span class="seq-item shift-${t}">${t}</span>
+      <input type="text" value="${s.note || ''}" placeholder="Nota..." maxlength="20"
+        ${ro ? 'disabled' : ''} onchange="setShiftNote('${t}',this.value)">
+    </div>`;
+  }).join('');
 }
 
 function modalRenderEvents() {
