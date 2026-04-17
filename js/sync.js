@@ -1,6 +1,6 @@
 /* sync.js — GitHub Gist sync: create, update, read calendars */
 
-const GIST_TOKEN = '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';
+const GIST_TOKEN = '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';
 const GIST_API = 'https://api.github.com/gists';
 
 /* Create a new gist for a calendar, returns gist ID */
