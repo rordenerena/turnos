@@ -80,11 +80,15 @@ function gdriveUpdateUI(loggedIn) {
   const btn = document.getElementById('btn-gdrive');
   if (!btn) return;
   if (loggedIn) {
-    btn.textContent = '🔓 Desconectar Drive';
-    btn.onclick = gdriveLogout;
+    btn.textContent = '✅ Conectado a Google Drive';
+    btn.disabled = true;
+    btn.onclick = null;
+    document.getElementById('btn-gdrive-disconnect').classList.remove('hidden');
   } else {
     btn.textContent = '🔒 Conectar Google Drive';
+    btn.disabled = false;
     btn.onclick = gdriveLogin;
+    document.getElementById('btn-gdrive-disconnect').classList.add('hidden');
   }
 }
 
