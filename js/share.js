@@ -39,6 +39,9 @@ async function shareGenerate() {
     document.getElementById('share-url').textContent = url;
     document.getElementById('qr-container').classList.remove('hidden');
     toast(gdriveToken ? 'QR generado con sync ✓' : 'QR generado ✓');
+    document.getElementById('share-sync-hint').textContent = currentCal.driveFileId
+      ? '🟢 Este QR incluye sync con Google Drive'
+      : '⚪ Sin sync — conectá Google Drive en ⚙️ para activarlo';
   } catch (e) {
     toast('Error al generar: ' + e.message);
   }
