@@ -1,0 +1,79 @@
+/* app.js — Bootstrap, tab switching, calendar selector */
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.add('hidden'), 3000);
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === `tab-${tab}`));
+  if (tab === 'shared') renderImportedList();
+  if (tab === 'patterns') renderPatternsList();
+  if (tab === 'settings') document.getElementById('my-cal-name').value = currentCal && !currentCal.readonly ? currentCal.name : '';
+}
+
+function renderCalSelector() {
+  const sel = document.getElementById('cal-selector');
+  const all = storeGetAll();
+  const activeId = currentCal ? currentCal.id : storeGetActive();
+  sel.innerHTML = Object.values(all).map(c =>
+    `<option value="${c.id}"${c.id === activeId ? ' selected' : ''}>${c.readonly ? '👁 ' : '✏️ '}${c.name}</option>`
+  ).join('');
+}
+
+function selectCalendar(id) {
+  currentCal = storeGet(id);
+  if (!currentCal) return;
+  storeSetActive(id);
+  renderCalSelector();
+  calRender();
+  renderPatternsList();
+}
+
+function saveMyName() {
+  if (!currentCal || currentCal.readonly) { toast('No podés renombrar un calendario importado'); return; }
+  const name = document.getElementById('my-cal-name').value.trim();
+  if (!name) { toast('Escribí un nombre'); return; }
+  currentCal.name = name;
+  storeSave(currentCal);
+  renderCalSelector();
+  toast('Nombre guardado ✓');
+}
+
+function deleteCurrentCalendar() {
+  if (!currentCal) return;
+  if (!confirm(`¿Eliminar "${currentCal.name}"?`)) return;
+  storeDelete(currentCal.id);
+  const own = storeEnsureOwn();
+  currentCal = own;
+  storeSetActive(own.id);
+  renderCalSelector();
+  calRender();
+  toast('Calendario eliminado');
+}
+
+/* Init */
+document.addEventListener('DOMContentLoaded', () => {
+  calInit();
+  storeEnsureOwn();
+
+  // Check URL hash for shared calendar import
+  const imported = shareCheckUrl();
+
+  // Load active calendar
+  const activeId = storeGetActive();
+  currentCal = storeGet(activeId) || storeGetMine()[0];
+  if (currentCal) storeSetActive(currentCal.id);
+
+  renderCalSelector();
+  calRender();
+
+  // Register SW
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+});
