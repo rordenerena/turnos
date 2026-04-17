@@ -17,7 +17,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .btn{border:none;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-size:.85rem;background:var(--card);border:1px solid var(--border);transition:opacity .2s;touch-action:manipulation;touch-manipulation}
 .btn:hover{opacity:.8}.btn:active{transform:scale(.97)}
 .btn-primary{background:var(--primary);color:#fff;border-color:var(--primary)}
-.btn-accent{background:#a5d6a7;color:#333;border-color:#a5d6a7}
+.btn-accent{background:#bbdefb;color:#333;border-color:#bbdefb}
 .btn-sm{padding:4px 10px;font-size:.8rem}
 .btn-danger{background:#e53935;color:#fff;border-color:#e53935}
 .shift-M{background:var(--shift-m);color:#fff;border-color:var(--shift-m)}
