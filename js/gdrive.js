@@ -11,13 +11,15 @@ let gdriveReady = false;
 
 /* Init Google APIs */
 function gdriveInit() {
-  // Load GAPI client
   if (typeof gapi !== 'undefined') {
     gapi.load('client', async () => {
       await gapi.client.init({ discoveryDocs: [GDRIVE_DISCOVERY] });
       gdriveReady = true;
       gdriveRestoreSession();
     });
+  } else {
+    // SDK not loaded yet, retry
+    setTimeout(gdriveInit, 500);
   }
 }
 
@@ -37,6 +39,8 @@ function gdriveRestoreSession() {
 
 /* Login with Google */
 function gdriveLogin() {
+  if (typeof google === 'undefined' || !google.accounts) { toast('Google SDK cargando, intentá de nuevo'); return; }
+  if (!gdriveReady) { toast('Inicializando Drive, intentá de nuevo'); return; }
   const client = google.accounts.oauth2.initTokenClient({
     client_id: GDRIVE_CLIENT_ID,
     scope: GDRIVE_SCOPES,
@@ -67,6 +71,7 @@ function gdriveLogout() {
 /* After login: sync down then update UI */
 async function gdriveOnLogin() {
   gdriveUpdateUI(true);
+  toast('Drive conectado, sincronizando...');
   try {
     await gdriveSyncDown();
     toast('Drive sincronizado ✓');
