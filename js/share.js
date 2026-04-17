@@ -23,16 +23,25 @@ function shareDecompress(b64) {
   return JSON.parse(json);
 }
 
-function shareGenerate() {
+async function shareGenerate() {
   if (!currentCal || currentCal.readonly) { toast('Seleccioná tu propio calendario'); return; }
   try {
     const compressed = shareCompress(currentCal);
-    const url = `${location.origin}${location.pathname}#cal=${compressed}`;
+    const longUrl = `${location.origin}${location.pathname}#cal=${compressed}`;
 
-    // Check URL length — QR codes handle up to ~4296 alphanumeric chars
-    if (url.length > 4000) {
-      toast('Calendario muy grande para QR. Usá el link.');
-    }
+    // Try to shorten the URL
+    let url = longUrl;
+    try {
+      const resp = await fetch('https://zip1.io/api/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: longUrl }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        url = data.short_url.replace('http://', 'https://');
+      }
+    } catch {}
 
     QRCode.toCanvas(document.getElementById('qr-canvas'), url, { width: 250, margin: 2, errorCorrectionLevel: 'L' });
     document.getElementById('share-url').textContent = url;
