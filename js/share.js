@@ -98,11 +98,31 @@ function renderImportedList() {
         <div class="imp-date">Actualizado: ${new Date(c.updatedAt).toLocaleString('es')}</div>
       </div>
       <div style="display:flex;gap:4px">
+        ${c.driveFileId ? `<button class="btn btn-sm btn-accent" onclick="refreshFromDrive('${c.id}')">🔄</button>` : ''}
         <button class="btn btn-sm btn-primary" onclick="selectCalendar('${c.id}');switchTab('calendar')">Ver</button>
         <button class="btn btn-sm btn-danger" onclick="removeImported('${c.id}')">✕</button>
       </div>
     </div>
   `).join('');
+}
+
+async function refreshFromDrive(calId) {
+  const cal = storeGet(calId);
+  if (!cal || !cal.driveFileId) { toast('Sin enlace de Drive'); return; }
+  try {
+    toast('Actualizando...');
+    const data = await gdriveReadPublic(cal.driveFileId);
+    if (data) {
+      data.driveFileId = cal.driveFileId;
+      const result = storeImportCalendar(data);
+      if (currentCal && currentCal.id === calId) { currentCal = result.cal; calRender(); }
+      renderCalSelector();
+      renderImportedList();
+      toast(`${cal.name} actualizado ✓`);
+    }
+  } catch (e) {
+    toast('Error al actualizar: ' + e.message);
+  }
 }
 
 function removeImported(id) {
