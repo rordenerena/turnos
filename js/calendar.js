@@ -32,11 +32,13 @@ function calRender() {
   for (let i = 0; i < startDay; i++) html += '<div class="cal-day empty"></div>';
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = dateStr(calYear, calMonth, d);
-    const shift = effective[ds] || null;
+    const shifts = effective[ds] || [];
     const evts = (currentCal && currentCal.events && currentCal.events[ds]) || [];
     html += `<div class="cal-day${ds === todayStr ? ' today' : ''}" onclick="dayClick('${ds}')">`;
     html += `<div class="day-num">${d}</div>`;
-    if (shift) html += `<div class="day-shift s-${shift}">${shift}</div>`;
+    if (shifts.length) {
+      shifts.forEach(s => html += `<div class="day-shift s-${s}">${s}</div>`);
+    }
     if (evts.length) html += `<div class="day-events"><span class="event-dot"></span>${evts.length > 1 ? evts.length : evts[0].text.substring(0, 10)}</div>`;
     html += '</div>';
   }
@@ -54,7 +56,13 @@ function calRender() {
 
 function computeEffectiveShifts() {
   if (!currentCal) return {};
-  const result = { ...currentCal.shifts };
+  const result = {};
+  const all = currentCal.shifts || {};
+
+  for (const ds in all) {
+    if (all[ds]?.length) result[ds] = [...all[ds]];
+  }
+
   if (!currentCal.patterns) return result;
   currentCal.patterns.forEach(p => {
     if (!p.sequence || !p.sequence.length || !p.startDate) return;
@@ -68,10 +76,10 @@ function computeEffectiveShifts() {
     const cur = new Date(iterStart);
     while (cur <= iterEnd) {
       const ds = dateStr(cur.getFullYear(), cur.getMonth(), cur.getDate());
-      if (!currentCal.shifts[ds]) {
+      if (!result[ds]) {
         const daysSince = Math.floor((cur - start) / 86400000);
         const idx = ((daysSince % p.sequence.length) + p.sequence.length) % p.sequence.length;
-        result[ds] = p.sequence[idx];
+        result[ds] = [p.sequence[idx]];
       }
       cur.setDate(cur.getDate() + 1);
     }
@@ -90,8 +98,20 @@ function dayClick(ds) {
 
 function setShift(shift) {
   if (!currentCal || currentCal.readonly) return;
-  if (shift === null) delete currentCal.shifts[selectedDate];
-  else currentCal.shifts[selectedDate] = shift;
+  if (!currentCal.shifts) currentCal.shifts = {};
+  if (!currentCal.shifts[selectedDate]) currentCal.shifts[selectedDate] = [];
+
+  const shifts = currentCal.shifts[selectedDate];
+  const idx = shifts.indexOf(shift);
+
+  if (shift === null) {
+    delete currentCal.shifts[selectedDate];
+  } else if (idx >= 0) {
+    shifts.splice(idx, 1);
+  } else {
+    shifts.push(shift);
+  }
+
   storeSave(currentCal);
   calRender();
   modalRenderShift();

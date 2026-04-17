@@ -19,10 +19,10 @@ function modalClose(e) {
 
 function modalRenderShift() {
   const effective = computeEffectiveShifts();
-  const current = effective[selectedDate] || null;
+  const current = effective[selectedDate] || [];
   document.querySelectorAll('#modal-shift-buttons .btn').forEach(b => {
     const m = b.getAttribute('onclick')?.match(/'(\w)'/);
-    b.style.outline = (m && m[1] === current) ? '3px solid var(--text)' : 'none';
+    b.style.outline = (m && current.includes(m[1])) ? '3px solid var(--text)' : 'none';
   });
 }
 
