@@ -122,6 +122,7 @@ function setShift(shift) {
   }
 
   storeSave(currentCal);
+    scheduleDriveSync();
   calRender();
   modalRenderShift();
 }
@@ -133,6 +134,7 @@ function setShiftNote(type, note) {
   if (s) s.note = note.trim();
   currentCal.shifts[selectedDate] = shifts;
   storeSave(currentCal);
+    scheduleDriveSync();
   calRender();
 }
 
@@ -178,6 +180,7 @@ function patternApply() {
   }
   currentCal.patterns.push({ sequence: [...patternSeq], startDate, endDate });
   storeSave(currentCal);
+    scheduleDriveSync();
   calRender();
   renderPatternsList();
   toast('Patrón aplicado ✓');
@@ -208,6 +211,7 @@ function patternDelete(idx) {
   if (!currentCal || currentCal.readonly) return;
   currentCal.patterns.splice(idx, 1);
   storeSave(currentCal);
+    scheduleDriveSync();
   calRender();
   renderPatternsList();
   toast('Patrón eliminado');

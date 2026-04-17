@@ -21,7 +21,10 @@ function switchTab(tab) {
     const monthInput = document.getElementById('pattern-month');
     monthInput.value = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
   }
-  if (tab === 'settings') document.getElementById('my-cal-name').value = currentCal && !currentCal.readonly ? currentCal.name : '';
+  if (tab === 'settings') {
+    document.getElementById('my-cal-name').value = currentCal && !currentCal.readonly ? currentCal.name : '';
+    gdriveUpdateUI(!!gdriveToken);
+  }
 }
 
 function renderCalSelector() {
@@ -88,6 +91,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   renderCalSelector();
   calRender();
+
+  // Init Google Drive sync
+  gdriveInit();
 
   // Register SW
   if ('serviceWorker' in navigator) {
