@@ -96,18 +96,30 @@ function renderImportedList() {
   const el = document.getElementById('imported-list');
   const imported = storeGetImported();
   if (!imported.length) { el.innerHTML = '<p class="hint">No tenés calendarios importados.</p>'; return; }
-  el.innerHTML = imported.map(c => `
+  el.innerHTML = imported.map(c => {
+    const hasOwner = c.ownerPlayerId;
+    return `
     <div class="imported-item">
       <div>
         <div class="imp-name">📅 ${c.name}</div>
         <div class="imp-date">Actualizado: ${new Date(c.updatedAt).toLocaleString('es')}</div>
       </div>
       <div style="display:flex;gap:4px">
+        ${hasOwner ? `<button class="btn btn-sm btn-accent" onclick="subscribeToCalendar('${c.id}')">🔔</button>` : ''}
         <button class="btn btn-sm btn-primary" onclick="selectCalendar('${c.id}');switchTab('calendar')">Ver</button>
         <button class="btn btn-sm btn-danger" onclick="removeImported('${c.id}')">✕</button>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
+}
+
+function subscribeToCalendar(calId) {
+  const cal = storeGet(calId);
+  if (!cal || !cal.ownerPlayerId) { toast('No se puede suscribir: falta ID del dueño'); return; }
+  const myId = myPlayerId || storeGetPlayerId();
+  if (!myId) { toast('Esperá a que se inicialicen las notificaciones'); return; }
+  pushRegisterWithOwner(cal.ownerPlayerId, calId);
+  toast('Suscripción enviada 🔔');
 }
 
 function removeImported(id) {
