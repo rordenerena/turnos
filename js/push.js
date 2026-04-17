@@ -123,8 +123,9 @@ async function pushNotifySubscribers() {
 
 async function pushRegisterWithOwner(ownerPlayerId, calId) {
   const myId = myPlayerId || storeGetPlayerId();
-  toast(`📨 Registrando con owner: ${ownerPlayerId.substring(0, 8)}... mi ID: ${(myId||'null').substring(0, 8)}`);
-  if (!myId || !ownerPlayerId) return;
+  toast(`📨 owner:${ownerPlayerId} myId:${myId} cal:${calId}`);
+  if (!myId) { toast('❌ No tengo player ID'); return; }
+  if (!ownerPlayerId) { toast('❌ No hay owner player ID'); return; }
   const body = {
     app_id: ONESIGNAL_APP_ID,
     include_player_ids: [ownerPlayerId],
