@@ -61,8 +61,9 @@ function computeEffectiveShifts() {
   const result = {};
   const all = currentCal.shifts || {};
 
+  // Copy manual shifts — including empty arrays (explicit "no shift" override)
   for (const ds in all) {
-    if (all[ds]?.length) result[ds] = [...all[ds]];
+    result[ds] = [...(all[ds] || [])];
   }
 
   if (!currentCal.patterns) return result;
@@ -78,7 +79,7 @@ function computeEffectiveShifts() {
     const cur = new Date(iterStart);
     while (cur <= iterEnd) {
       const ds = dateStr(cur.getFullYear(), cur.getMonth(), cur.getDate());
-      if (!result[ds]) {
+      if (!(ds in result)) {
         const daysSince = Math.floor((cur - start) / 86400000);
         const idx = ((daysSince % p.sequence.length) + p.sequence.length) % p.sequence.length;
         result[ds] = [p.sequence[idx]];
@@ -104,14 +105,14 @@ function setShift(shift) {
   if (!currentCal.shifts[selectedDate]) currentCal.shifts[selectedDate] = [];
 
   const shifts = currentCal.shifts[selectedDate];
-  const idx = shifts.indexOf(shift);
 
   if (shift === null) {
-    delete currentCal.shifts[selectedDate];
-  } else if (idx >= 0) {
-    shifts.splice(idx, 1);
+    // Explicit empty — overrides pattern for this day
+    currentCal.shifts[selectedDate] = [];
   } else {
-    shifts.push(shift);
+    const idx = shifts.indexOf(shift);
+    if (idx >= 0) shifts.splice(idx, 1);
+    else shifts.push(shift);
   }
 
   storeSave(currentCal);
