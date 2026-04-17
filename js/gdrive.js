@@ -103,7 +103,6 @@ async function gdriveUploadAndShare(cal) {
       headers: { Authorization: `Bearer ${gdriveToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    toast(`Drive actualizado (${r.status}) ${fileId.substring(0,8)}...`);
   } else {
     // Create
     const metadata = { name: fileName, mimeType: 'application/json' };
@@ -147,12 +146,46 @@ async function gdriveReadPublic(fileId) {
   return resp.json();
 }
 
-/* Debounced Drive upload — 5s after last change */
+/* Debounced Drive upload with visual countdown */
 let _driveTimer = null;
+let _countdownInterval = null;
+const SYNC_DELAY = 5000;
+
 function scheduleDriveSync() {
   if (!gdriveToken || !currentCal || currentCal.readonly) return;
   clearTimeout(_driveTimer);
-  _driveTimer = setTimeout(() => gdriveUploadAndShare(currentCal).catch(e => console.warn('Drive sync:', e)), 5000);
+  clearInterval(_countdownInterval);
+
+  const indicator = document.getElementById('sync-indicator');
+  const ring = document.getElementById('sync-ring-fg');
+  const icon = document.getElementById('sync-icon');
+  indicator.classList.remove('hidden');
+  icon.textContent = '⏳';
+  ring.style.stroke = '#a5d6a7';
+
+  const start = Date.now();
+  _countdownInterval = setInterval(() => {
+    const elapsed = Date.now() - start;
+    const progress = Math.min(elapsed / SYNC_DELAY, 1);
+    ring.style.strokeDashoffset = 100 - (progress * 100);
+    if (progress >= 1) clearInterval(_countdownInterval);
+  }, 50);
+
+  _driveTimer = setTimeout(async () => {
+    clearInterval(_countdownInterval);
+    ring.style.strokeDashoffset = 0;
+    icon.textContent = '🔄';
+    try {
+      await gdriveUploadAndShare(currentCal);
+      icon.textContent = '✅';
+      ring.style.stroke = '#a5d6a7';
+    } catch (e) {
+      icon.textContent = '❌';
+      ring.style.stroke = '#ef9a9a';
+      console.warn('Drive sync:', e);
+    }
+    setTimeout(() => indicator.classList.add('hidden'), 1500);
+  }, SYNC_DELAY);
 }
 
 /* Fetch updates for all imported calendars that have driveFileId */
