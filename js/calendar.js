@@ -52,7 +52,8 @@ function calRender() {
   const banner = document.getElementById('readonly-banner');
   const ro = currentCal && currentCal.readonly;
   if (ro) {
-    banner.textContent = `👁 ${currentCal.name} (solo lectura)`;
+    const syncBtn = currentCal.driveFileId ? ` <button class="btn btn-sm btn-accent" onclick="refreshFromDrive('${currentCal.id}')" style="margin-left:8px">🔄</button>` : '';
+    banner.innerHTML = `👁 ${currentCal.name} (solo lectura)${syncBtn}`;
     banner.classList.remove('hidden');
   } else {
     banner.classList.add('hidden');
