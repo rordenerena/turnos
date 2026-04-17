@@ -33,23 +33,7 @@ async function shareGenerate() {
     }
 
     const compressed = shareCompress(currentCal);
-    const longUrl = `${location.origin}${location.pathname}#cal=${compressed}`;
-
-    // Try to shorten the URL (only on https)
-    let url = longUrl;
-    if (location.protocol === 'https:') {
-      try {
-        const resp = await fetch('https://zip1.io/api/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: longUrl }),
-        });
-        if (resp.ok) {
-          const data = await resp.json();
-          url = data.short_url.replace('http://', 'https://');
-        }
-      } catch {}
-    }
+    const url = `${location.origin}${location.pathname}#cal=${compressed}`;
 
     QRCode.toCanvas(document.getElementById('qr-canvas'), url, { width: 250, margin: 2, errorCorrectionLevel: 'L' });
     document.getElementById('share-url').textContent = url;
