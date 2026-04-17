@@ -83,6 +83,8 @@ function shareCheckUrl() {
     // Clean URL hash without reloading
     history.replaceState(null, '', location.pathname + location.search);
     toast(result.isNew ? `Calendario "${data.name}" importado ✓` : `Calendario "${data.name}" actualizado ✓`);
+    if (data.driveFileId) toast(`🔄 Sync Drive: ${data.driveFileId.substring(0, 10)}...`);
+    else toast('⚠️ Sin driveFileId en los datos');
     return true;
   } catch (e) {
     toast('Error al importar: ' + e.message);

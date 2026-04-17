@@ -124,12 +124,6 @@
         <button class="btn btn-sm btn-danger hidden" id="btn-gdrive-disconnect" onclick="gdriveLogout()" style="margin-top:6px">Desconectar</button>
       </div>
       <div class="card">
-        <h3>Exportar / Importar</h3>
-        <button class="btn" onclick="exportJSON()">Exportar JSON</button>
-        <button class="btn" onclick="document.getElementById('import-file').click()">Importar JSON</button>
-        <input type="file" id="import-file" accept=".json" class="hidden" onchange="importJSON(event)">
-      </div>
-      <div class="card">
         <button class="btn" onclick="updateSW()">Actualizar app</button>
       </div>
       <div class="card">
@@ -171,7 +165,7 @@
     </div>
 
     <div id="toast" class="hidden"></div>
-    <p class="app-version">v18/04/2026 00:56</p>
+    <p class="app-version">v18/04/2026 00:58</p>
   </div>
 
   <script src="js/store.js"></script>
