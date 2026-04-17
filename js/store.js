@@ -73,17 +73,16 @@ function storeImportCalendar(data) {
   const cals = storeGetAll();
   const existing = cals[data.id];
   if (existing) {
-    // Update existing imported calendar
     existing.name = data.name;
     existing.shifts = data.shifts;
     existing.events = data.events;
     existing.patterns = data.patterns;
     existing.updatedAt = data.updatedAt || new Date().toISOString();
     existing.readonly = true;
+    if (data.gistId) existing.gistId = data.gistId;
     storeSave(existing);
     return { cal: existing, isNew: false };
   }
-  // New import
   const cal = { ...data, readonly: true };
   storeSave(cal);
   return { cal, isNew: true };

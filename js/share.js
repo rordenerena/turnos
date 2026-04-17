@@ -23,17 +23,15 @@ function shareDecompress(b64) {
   return JSON.parse(json);
 }
 
-function shareGenerate() {
+async function shareGenerate() {
   if (!currentCal || currentCal.readonly) { toast('Seleccioná tu propio calendario'); return; }
   try {
-    const compressed = shareCompress(currentCal);
-    const url = `${location.origin}${location.pathname}#cal=${compressed}`;
+    toast('Subiendo...');
+    await syncUpload();
+    if (!currentCal.gistId) { toast('Error al crear gist'); return; }
 
-    // Check URL length — QR codes handle up to ~4296 alphanumeric chars
-    if (url.length > 4000) {
-      toast('Calendario muy grande para QR. Usá el link.');
-    }
-
+    // QR contains just the gist ID — small, always fits
+    const url = `${location.origin}${location.pathname}#gist=${currentCal.gistId}`;
     QRCode.toCanvas(document.getElementById('qr-canvas'), url, { width: 250, margin: 2, errorCorrectionLevel: 'L' });
     document.getElementById('share-url').textContent = url;
     document.getElementById('qr-container').classList.remove('hidden');
@@ -66,24 +64,48 @@ async function shareNative() {
   }
 }
 
-function shareCheckUrl() {
+async function shareCheckUrl() {
   const hash = location.hash;
-  if (!hash.startsWith('#cal=')) return false;
-  try {
-    const b64 = hash.substring(5);
-    const data = shareDecompress(b64);
-    if (!data.id || !data.name) { toast('Datos inválidos'); return false; }
-    const result = storeImportCalendar(data);
-    storeSetActive(result.cal.id);
-    currentCal = result.cal;
-    // Clean URL hash without reloading
+
+  // New format: #gist=GIST_ID
+  if (hash.startsWith('#gist=')) {
+    const gistId = hash.substring(6);
     history.replaceState(null, '', location.pathname + location.search);
-    toast(result.isNew ? `Calendario "${data.name}" importado ✓` : `Calendario "${data.name}" actualizado ✓`);
-    return true;
-  } catch (e) {
-    toast('Error al importar: ' + e.message);
-    return false;
+    try {
+      toast('Descargando calendario...');
+      const data = await gistRead(gistId);
+      if (!data.id || !data.name) { toast('Datos inválidos'); return false; }
+      data.gistId = gistId;
+      const result = storeImportCalendar(data);
+      storeSetActive(result.cal.id);
+      currentCal = result.cal;
+      toast(result.isNew ? `Calendario "${data.name}" importado ✓` : `Calendario "${data.name}" actualizado ✓`);
+      return true;
+    } catch (e) {
+      toast('Error al importar: ' + e.message);
+      return false;
+    }
   }
+
+  // Legacy format: #cal=COMPRESSED_DATA
+  if (hash.startsWith('#cal=')) {
+    try {
+      const b64 = hash.substring(5);
+      const data = shareDecompress(b64);
+      if (!data.id || !data.name) { toast('Datos inválidos'); return false; }
+      const result = storeImportCalendar(data);
+      storeSetActive(result.cal.id);
+      currentCal = result.cal;
+      history.replaceState(null, '', location.pathname + location.search);
+      toast(result.isNew ? `Calendario "${data.name}" importado ✓` : `Calendario "${data.name}" actualizado ✓`);
+      return true;
+    } catch (e) {
+      toast('Error al importar: ' + e.message);
+      return false;
+    }
+  }
+
+  return false;
 }
 
 function renderImportedList() {

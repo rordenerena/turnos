@@ -89,6 +89,9 @@ document.addEventListener('DOMContentLoaded', () => {
   renderCalSelector();
   calRender();
 
+  // Sync imported calendars from gists
+  syncFetchImported();
+
   // Register SW
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
