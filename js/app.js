@@ -92,6 +92,21 @@ document.addEventListener('DOMContentLoaded', () => {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
+
+  // Handle links when PWA is already open (launch_handler: focus-existing)
+  if ('launchQueue' in window) {
+    launchQueue.setConsumer(launchParams => {
+      if (launchParams.targetURL) {
+        const url = new URL(launchParams.targetURL);
+        if (url.hash.startsWith('#cal=')) {
+          location.hash = url.hash;
+          shareCheckUrl();
+          renderCalSelector();
+          calRender();
+        }
+      }
+    });
+  }
 });
 
 function updateSW() {
