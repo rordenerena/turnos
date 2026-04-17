@@ -11,6 +11,15 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.2.2/build/qrcode.min.js"></script>
 </head>
 <body>
+  <div id="onboard" class="modal hidden">
+    <div class="modal-content">
+      <h2>Bienvenido</h2>
+      <p>¿Cómo te llamas?</p>
+      <input type="text" id="onboard-name" placeholder="Tu nombre" maxlength="30" onkeydown="if(event.key==='Enter')onboardSubmit()">
+      <button class="btn btn-primary" onclick="onboardSubmit()">Continuar</button>
+    </div>
+  </div>
+
   <div id="app">
     <header id="header">
       <h1>📅 Turnos</h1>

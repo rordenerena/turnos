@@ -92,9 +92,23 @@ function storeImportCalendar(data) {
 function storeEnsureOwn() {
   const mine = storeGetMine();
   if (mine.length === 0) {
-    const cal = storeCreateCalendar('Mi calendario');
-    storeSetActive(cal.id);
-    return cal;
+    const name = storeGetPendingName();
+    if (name) {
+      const cal = storeCreateCalendar(`Turnos de ${name}`);
+      storeSetActive(cal.id);
+      return cal;
+    }
+    // No name yet — trigger onboarding
+    setTimeout(() => document.dispatchEvent(new CustomEvent('onboard')) );
+    return null;
   }
   return mine[0];
+}
+
+function storeSavePendingName(name) {
+  try { localStorage.setItem('pendingName', name); } catch {}
+}
+
+function storeGetPendingName() {
+  try { return localStorage.getItem('pendingName'); } catch { return null; }
 }

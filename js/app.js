@@ -58,16 +58,24 @@ function deleteCurrentCalendar() {
 
 /* Init */
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize calendar system
   calInit();
-  storeEnsureOwn();
 
-  // Check URL hash for shared calendar import
-  const imported = shareCheckUrl();
+  // Check URL hash for shared calendar import first
+  shareCheckUrl();
 
-  // Load active calendar
+  // Then ensure we have a calendar
+  const mine = storeGetMine();
+  if (mine.length === 0) {
+    // No own calendar — show onboarding
+    document.getElementById('onboard').classList.remove('hidden');
+    return;
+  }
+
+  // Load active or first calendar
   const activeId = storeGetActive();
-  currentCal = storeGet(activeId) || storeGetMine()[0];
-  if (currentCal) storeSetActive(currentCal.id);
+  currentCal = storeGet(activeId) || mine[0];
+  storeSetActive(currentCal.id);
 
   renderCalSelector();
   calRender();
@@ -89,4 +97,32 @@ function updateSW() {
       });
     }
   });
+}
+
+/* Onboarding */
+document.addEventListener('onboard', () => {
+  document.getElementById('onboard').classList.remove('hidden');
+});
+
+function onboardSubmit() {
+  const name = document.getElementById('onboard-name').value.trim();
+  if (!name) { toast('Escribí tu nombre'); return; }
+  try { localStorage.setItem('pendingName', name); } catch {}
+  document.getElementById('onboard').classList.add('hidden');
+
+  // Initialize calendar system
+  calInit();
+
+  // Create calendar with name
+  const cal = storeCreateCalendar(`Turnos de ${name}`);
+  storeSetActive(cal.id);
+  currentCal = cal;
+
+  renderCalSelector();
+  calRender();
+
+  // Register SW
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
 }
