@@ -14,6 +14,7 @@ function switchTab(tab) {
   if (tab === 'shared') {
     renderImportedList();
     document.getElementById('qr-container').classList.add('hidden');
+    pushUpdateStatus();
   }
   if (tab === 'patterns') {
     renderPatternsList();

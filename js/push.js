@@ -20,8 +20,10 @@ async function pushInit() {
     OneSignal.User.PushSubscription.addEventListener('change', (e) => {
       myPlayerId = e.current.id || null;
       storeSetPlayerId(myPlayerId);
+      pushUpdateStatus();
     });
     if (myPlayerId) storeSetPlayerId(myPlayerId);
+    pushUpdateStatus();
 
     // Listen for incoming push data (calendar sync)
     OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event) => {
@@ -89,7 +91,6 @@ async function pushNotifySubscribers() {
   }
 }
 
-/* Register ourselves as subscriber to a calendar owner */
 async function pushRegisterWithOwner(ownerPlayerId, calId) {
   const myId = myPlayerId || storeGetPlayerId();
   if (!myId || !ownerPlayerId) return;
@@ -110,4 +111,37 @@ async function pushRegisterWithOwner(ownerPlayerId, calId) {
       body: JSON.stringify(body),
     });
   } catch {}
+}
+
+/* Bell status indicator */
+function pushUpdateStatus() {
+  const el = document.getElementById('push-status');
+  if (!el) return;
+  const id = myPlayerId || storeGetPlayerId();
+  const granted = typeof Notification !== 'undefined' && Notification.permission === 'granted';
+  if (id && granted) {
+    el.textContent = '🟢🔔';
+    el.title = 'Auto-sync activo';
+  } else {
+    el.textContent = '⚪🔔';
+    el.title = 'Toca para activar auto-sync';
+  }
+}
+
+async function pushFixStatus() {
+  const id = myPlayerId || storeGetPlayerId();
+  const granted = typeof Notification !== 'undefined' && Notification.permission === 'granted';
+  if (id && granted) { toast('Auto-sync ya está activo ✓'); return; }
+  if (typeof OneSignalDeferred === 'undefined') { toast('OneSignal no disponible'); return; }
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.Notifications.requestPermission();
+    // Wait a moment for player_id to be assigned
+    setTimeout(() => {
+      myPlayerId = OneSignal.User.PushSubscription.id || null;
+      if (myPlayerId) storeSetPlayerId(myPlayerId);
+      pushUpdateStatus();
+      if (myPlayerId) toast('Auto-sync activado ✓');
+      else toast('No se pudo activar. Permitiste las notificaciones?');
+    }, 2000);
+  });
 }
