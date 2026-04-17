@@ -157,6 +157,7 @@ function scheduleDriveSync() {
 
 /* Fetch updates for all imported calendars that have driveFileId */
 async function gdriveFetchImported() {
+  if (!gdriveToken) return;
   const imported = storeGetImported();
   for (const cal of imported) {
     if (!cal.driveFileId) continue;

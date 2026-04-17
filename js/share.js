@@ -113,6 +113,7 @@ function renderImportedList() {
 async function refreshFromDrive(calId) {
   const cal = storeGet(calId);
   if (!cal || !cal.driveFileId) { toast('Sin enlace de Drive'); return; }
+  if (!gdriveToken) { toast('Conectá Google Drive en ⚙️ primero'); return; }
   try {
     toast('Actualizando...');
     const data = await gdriveReadPublic(cal.driveFileId);
