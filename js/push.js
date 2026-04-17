@@ -133,7 +133,7 @@ async function pushRegisterWithOwner(ownerPlayerId, calId) {
     data: { subscribe: { calId, playerId: myId } },
   };
   try {
-    await fetch(ONESIGNAL_API_URL, {
+    const resp = await fetch(ONESIGNAL_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
@@ -141,7 +141,11 @@ async function pushRegisterWithOwner(ownerPlayerId, calId) {
       },
       body: JSON.stringify(body),
     });
-  } catch {}
+    const result = await resp.json();
+    toast(`📬 Resp: ${resp.status} ${JSON.stringify(result).substring(0, 80)}`);
+  } catch (e) {
+    toast(`❌ Error envío: ${e.message}`);
+  }
 }
 
 /* Bell status indicator */
