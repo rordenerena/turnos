@@ -27,7 +27,10 @@ async function pushInit() {
     if (myPlayerId) storeSetPlayerId(myPlayerId);
     pushUpdateStatus();
 
-    // Listen for incoming push data (calendar sync)
+    // Re-subscribe to all imported calendars (in case previous subscribe push was missed)
+    setTimeout(pushResubscribeAll, 3000);
+
+    // Listen for incoming push data
     OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event) => {
       const data = event.notification.additionalData;
       if (!data) return;
@@ -42,18 +45,37 @@ async function pushInit() {
         toast('Nuevo suscriptor registrado ✓');
       }
     });
+
+    // Handle notification click (background notifications)
+    OneSignal.Notifications.addEventListener('click', (event) => {
+      const data = event.notification.additionalData;
+      if (!data) return;
+      if (data.calSync) pushHandleSync(data.calSync);
+      if (data.subscribe) storeAddSubscriber(data.subscribe.calId, data.subscribe.playerId);
+    });
   });
 }
 
 function pushHandleSync(calData) {
   if (!calData || !calData.id) return;
   const result = storeImportCalendar(calData);
-  // If we're currently viewing this calendar, refresh
   if (currentCal && currentCal.id === calData.id) {
     currentCal = result.cal;
     calRender();
   }
   renderCalSelector();
+}
+
+/* Re-subscribe to all imported calendars that have ownerPlayerId (runs on app open) */
+function pushResubscribeAll() {
+  const myId = myPlayerId || storeGetPlayerId();
+  if (!myId) return;
+  const imported = storeGetImported();
+  imported.forEach(c => {
+    if (c.ownerPlayerId) {
+      pushRegisterWithOwner(c.ownerPlayerId, c.id);
+    }
+  });
 }
 
 /* Send calendar data to all subscribers via OneSignal REST API */
