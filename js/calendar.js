@@ -116,17 +116,25 @@ function patternApply() {
   if (!currentCal || currentCal.readonly) { toast('No podés editar este calendario'); return; }
   if (!patternSeq.length) { toast('Agregá turnos a la secuencia'); return; }
   const mode = document.querySelector('input[name="pattern-mode"]:checked').value;
-  const startInput = document.getElementById('pattern-start').value;
-  if (!startInput) { toast('Seleccioná fecha de inicio'); return; }
-  let startDate = startInput, endDate = null;
+  let startDate, endDate = null;
+
   if (mode === 'until') {
+    const startInput = document.getElementById('pattern-start').value;
+    if (!startInput) { toast('Seleccioná fecha de inicio'); return; }
+    startDate = startInput;
     endDate = document.getElementById('pattern-end').value;
     if (!endDate) { toast('Seleccioná fecha fin'); return; }
   } else {
+    // Month mode: use pattern-start if set, otherwise day 1
+    const startInput = document.getElementById('pattern-start').value;
     const mv = document.getElementById('pattern-month').value;
     if (!mv) { toast('Seleccioná un mes'); return; }
     const [y, m] = mv.split('-').map(Number);
-    startDate = `${y}-${String(m).padStart(2, '0')}-01`;
+    if (startInput && startInput.startsWith(mv)) {
+      startDate = startInput;
+    } else {
+      startDate = `${mv}-01`;
+    }
     endDate = `${y}-${String(m).padStart(2, '0')}-${new Date(y, m, 0).getDate()}`;
   }
   currentCal.patterns.push({ sequence: [...patternSeq], startDate, endDate });

@@ -12,7 +12,12 @@ function switchTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === `tab-${tab}`));
   if (tab === 'shared') renderImportedList();
-  if (tab === 'patterns') renderPatternsList();
+  if (tab === 'patterns') {
+    renderPatternsList();
+    // Initialize month input to current calendar view month
+    const monthInput = document.getElementById('pattern-month');
+    monthInput.value = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
+  }
   if (tab === 'settings') document.getElementById('my-cal-name').value = currentCal && !currentCal.readonly ? currentCal.name : '';
 }
 
