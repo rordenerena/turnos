@@ -84,7 +84,10 @@
       <div id="qr-container" class="hidden">
         <canvas id="qr-canvas"></canvas>
         <p id="share-url" class="share-url"></p>
-        <button class="btn btn-sm" onclick="shareCopyLink()">Copiar link</button>
+        <div class="row" style="gap:8px">
+          <button class="btn btn-sm" onclick="shareCopyLink()">Copiar link</button>
+          <button class="btn btn-sm" onclick="shareNative()">Compartir</button>
+        </div>
       </div>
       <h2>Calendarios importados</h2>
       <div id="imported-list"></div>

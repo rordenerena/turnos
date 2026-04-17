@@ -48,6 +48,24 @@ function shareCopyLink() {
   navigator.clipboard.writeText(url).then(() => toast('Link copiado ✓')).catch(() => toast('No se pudo copiar'));
 }
 
+async function shareNative() {
+  const url = document.getElementById('share-url').textContent;
+  if (!url) { toast('Generá el link primero'); return; }
+  if (!navigator.share) {
+    toast('Compartir no disponible en este dispositivo');
+    return;
+  }
+  try {
+    await navigator.share({
+      title: 'Calendario de Turnos',
+      text: 'Te comparto mi calendario de turnos',
+      url: url,
+    });
+  } catch (e) {
+    if (e.name !== 'AbortError') toast('Error al compartir');
+  }
+}
+
 function shareCheckUrl() {
   const hash = location.hash;
   if (!hash.startsWith('#cal=')) return false;
