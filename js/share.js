@@ -1,7 +1,6 @@
 /* share.js — Compress calendar data, generate QR, import from URL hash */
 
 function shareCompress(cal) {
-  // Only share the essential data (not readonly flag, not createdAt)
   const payload = {
     id: cal.id,
     name: cal.name,
@@ -10,6 +9,7 @@ function shareCompress(cal) {
     patterns: cal.patterns,
     updatedAt: cal.updatedAt,
   };
+  if (cal.driveFileId) payload.driveFileId = cal.driveFileId;
   const json = JSON.stringify(payload);
   const compressed = pako.deflate(new TextEncoder().encode(json));
   return btoa(String.fromCharCode(...compressed));
@@ -23,21 +23,38 @@ function shareDecompress(b64) {
   return JSON.parse(json);
 }
 
-function shareGenerate() {
+async function shareGenerate() {
   if (!currentCal || currentCal.readonly) { toast('Seleccioná tu propio calendario'); return; }
   try {
-    const compressed = shareCompress(currentCal);
-    const url = `${location.origin}${location.pathname}#cal=${compressed}`;
+    // Upload to Drive if connected
+    if (gdriveToken) {
+      toast('Subiendo a Drive...');
+      await gdriveUploadAndShare(currentCal);
+    }
 
-    // Check URL length — QR codes handle up to ~4296 alphanumeric chars
-    if (url.length > 4000) {
-      toast('Calendario muy grande para QR. Usá el link.');
+    const compressed = shareCompress(currentCal);
+    const longUrl = `${location.origin}${location.pathname}#cal=${compressed}`;
+
+    // Try to shorten the URL (only on https)
+    let url = longUrl;
+    if (location.protocol === 'https:') {
+      try {
+        const resp = await fetch('https://zip1.io/api/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: longUrl }),
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          url = data.short_url.replace('http://', 'https://');
+        }
+      } catch {}
     }
 
     QRCode.toCanvas(document.getElementById('qr-canvas'), url, { width: 250, margin: 2, errorCorrectionLevel: 'L' });
     document.getElementById('share-url').textContent = url;
     document.getElementById('qr-container').classList.remove('hidden');
-    toast('QR generado ✓');
+    toast(gdriveToken ? 'QR generado con sync ✓' : 'QR generado ✓');
   } catch (e) {
     toast('Error al generar: ' + e.message);
   }

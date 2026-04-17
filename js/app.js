@@ -95,6 +95,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Init Google Drive sync
   gdriveInit();
 
+  // Fetch updates for imported calendars from Drive
+  gdriveFetchImported();
+
   // Register SW
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

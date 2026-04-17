@@ -80,6 +80,7 @@ function storeImportCalendar(data) {
     existing.patterns = data.patterns;
     existing.updatedAt = data.updatedAt || new Date().toISOString();
     existing.readonly = true;
+    if (data.driveFileId) existing.driveFileId = data.driveFileId;
     storeSave(existing);
     return { cal: existing, isNew: false };
   }
