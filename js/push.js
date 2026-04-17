@@ -13,6 +13,8 @@ async function pushInit() {
     await OneSignal.init({
       appId: ONESIGNAL_APP_ID,
       allowLocalhostAsSecureOrigin: true,
+      serviceWorkerParam: { scope: './' },
+      serviceWorkerPath: 'OneSignalSDKWorker.js',
     });
     OneSignal.Notifications.requestPermission();
     // Get player ID
