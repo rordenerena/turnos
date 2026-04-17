@@ -122,6 +122,7 @@ function setShift(shift) {
   }
 
   storeSave(currentCal);
+    schedulePushSync();
   calRender();
   modalRenderShift();
 }
@@ -133,6 +134,7 @@ function setShiftNote(type, note) {
   if (s) s.note = note.trim();
   currentCal.shifts[selectedDate] = shifts;
   storeSave(currentCal);
+    schedulePushSync();
   calRender();
 }
 
@@ -178,6 +180,7 @@ function patternApply() {
   }
   currentCal.patterns.push({ sequence: [...patternSeq], startDate, endDate });
   storeSave(currentCal);
+    schedulePushSync();
   calRender();
   renderPatternsList();
   toast('Patrón aplicado ✓');
@@ -208,7 +211,16 @@ function patternDelete(idx) {
   if (!currentCal || currentCal.readonly) return;
   currentCal.patterns.splice(idx, 1);
   storeSave(currentCal);
+    schedulePushSync();
   calRender();
   renderPatternsList();
   toast('Patrón eliminado');
+}
+
+/* Debounced push sync — waits 2s after last change to avoid spamming */
+let _pushTimer = null;
+function schedulePushSync() {
+  if (!currentCal || currentCal.readonly) return;
+  clearTimeout(_pushTimer);
+  _pushTimer = setTimeout(() => pushNotifySubscribers(), 2000);
 }

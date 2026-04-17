@@ -1,7 +1,6 @@
 /* share.js — Compress calendar data, generate QR, import from URL hash */
 
 function shareCompress(cal) {
-  // Only share the essential data (not readonly flag, not createdAt)
   const payload = {
     id: cal.id,
     name: cal.name,
@@ -9,6 +8,7 @@ function shareCompress(cal) {
     events: cal.events,
     patterns: cal.patterns,
     updatedAt: cal.updatedAt,
+    ownerPlayerId: myPlayerId || storeGetPlayerId() || null,
   };
   const json = JSON.stringify(payload);
   const compressed = pako.deflate(new TextEncoder().encode(json));
@@ -76,6 +76,12 @@ function shareCheckUrl() {
     const result = storeImportCalendar(data);
     storeSetActive(result.cal.id);
     currentCal = result.cal;
+    // Save owner's player_id for this calendar
+    if (data.ownerPlayerId) {
+      storeSetOwnerPlayerId(result.cal.id, data.ownerPlayerId);
+      // Register ourselves as subscriber to the owner via push
+      pushRegisterWithOwner(data.ownerPlayerId, data.id);
+    }
     // Clean URL hash without reloading
     history.replaceState(null, '', location.pathname + location.search);
     toast(result.isNew ? `Calendario "${data.name}" importado ✓` : `Calendario "${data.name}" actualizado ✓`);

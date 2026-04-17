@@ -94,6 +94,9 @@ document.addEventListener('DOMContentLoaded', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 
+  // Init OneSignal push
+  pushInit();
+
   // Handle links when PWA is already open (launch_handler: focus-existing)
   if ('launchQueue' in window) {
     launchQueue.setConsumer(launchParams => {

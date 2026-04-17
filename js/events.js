@@ -63,6 +63,7 @@ function addEvent() {
   currentCal.events[selectedDate].push({ text });
   input.value = '';
   storeSave(currentCal);
+    schedulePushSync();
   modalRenderEvents();
   calRender();
 }
@@ -72,6 +73,7 @@ function deleteEvent(idx) {
   currentCal.events[selectedDate].splice(idx, 1);
   if (!currentCal.events[selectedDate].length) delete currentCal.events[selectedDate];
   storeSave(currentCal);
+    schedulePushSync();
   modalRenderEvents();
   calRender();
 }

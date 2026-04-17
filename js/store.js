@@ -113,3 +113,31 @@ function storeSavePendingName(name) {
 function storeGetPendingName() {
   try { return localStorage.getItem('pendingName'); } catch { return null; }
 }
+
+/* OneSignal player ID */
+function storeSetPlayerId(id) {
+  try { localStorage.setItem('turnos_player_id', id); } catch {}
+}
+function storeGetPlayerId() {
+  try { return localStorage.getItem('turnos_player_id'); } catch { return null; }
+}
+
+/* Subscribers: who should receive push when MY calendar changes */
+function storeAddSubscriber(calId, playerId) {
+  if (!playerId) return;
+  const key = `turnos_subs_${calId}`;
+  const subs = JSON.parse(localStorage.getItem(key) || '[]');
+  if (!subs.includes(playerId)) {
+    subs.push(playerId);
+    localStorage.setItem(key, JSON.stringify(subs));
+  }
+}
+function storeGetSubscribers(calId) {
+  return JSON.parse(localStorage.getItem(`turnos_subs_${calId}`) || '[]');
+}
+
+/* Owner player_id stored per imported calendar (to register ourselves) */
+function storeSetOwnerPlayerId(calId, playerId) {
+  const cal = storeGet(calId);
+  if (cal) { cal.ownerPlayerId = playerId; storeSave(cal); }
+}

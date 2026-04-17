@@ -1,5 +1,5 @@
-const CACHE_NAME = 'turnos-v4';
-const ASSETS = ['./', './index.html', './css/styles.css', './js/store.js', './js/calendar.js', './js/events.js', './js/share.js', './js/app.js', './manifest.json'];
+const CACHE_NAME = 'turnos-v5';
+const ASSETS = ['./', './index.html', './css/styles.css', './js/push.js', './js/store.js', './js/calendar.js', './js/events.js', './js/share.js', './js/app.js', './manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
