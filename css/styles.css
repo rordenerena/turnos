@@ -68,7 +68,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 #pattern-mode-select label{display:inline;font-weight:normal;font-size:.85rem}
 .pattern-item{background:var(--card);padding:8px;border-radius:var(--radius);border:1px solid var(--border);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;font-size:.8rem}
 .pattern-item .seq{display:flex;gap:4px;flex-wrap:wrap}
-.pattern-item .seq .seq-item{min-width:28px;text-align:center}
+.pattern-item .seq .seq-item{min-width:28px;text-align:center;padding:2px 8px;border-radius:4px;color:#fff;font-weight:700;font-size:.8rem}
 
 /* Share */
 #qr-container{text-align:center;margin:12px 0}
