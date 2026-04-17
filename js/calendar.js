@@ -44,14 +44,16 @@ function calRender() {
   }
   grid.innerHTML = html;
 
-  // Readonly banner
+  // Readonly banner + hide tabs
   const banner = document.getElementById('readonly-banner');
-  if (currentCal && currentCal.readonly) {
+  const ro = currentCal && currentCal.readonly;
+  if (ro) {
     banner.textContent = `👁 ${currentCal.name} (solo lectura)`;
     banner.classList.remove('hidden');
   } else {
     banner.classList.add('hidden');
   }
+  document.querySelectorAll('.tab[data-tab="patterns"],.tab[data-tab="shared"],.tab[data-tab="settings"]').forEach(t => t.classList.toggle('hidden', ro));
 }
 
 function computeEffectiveShifts() {

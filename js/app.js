@@ -37,6 +37,7 @@ function selectCalendar(id) {
   currentCal = storeGet(id);
   if (!currentCal) return;
   storeSetActive(id);
+  if (currentCal.readonly) switchTab('calendar');
   renderCalSelector();
   calRender();
   renderPatternsList();
