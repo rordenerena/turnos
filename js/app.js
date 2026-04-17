@@ -77,3 +77,16 @@ document.addEventListener('DOMContentLoaded', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 });
+
+function updateSW() {
+  if (!('serviceWorker' in navigator)) { toast('Service Worker no disponible'); return; }
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    for (const reg of regs) {
+      reg.update().then(() => {
+        location.reload();
+      }).catch(() => {
+        location.reload();
+      });
+    }
+  });
+}

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'turnos-v2';
+const CACHE_NAME = 'turnos-v3';
 const ASSETS = ['./', './index.html', './css/styles.css', './js/store.js', './js/calendar.js', './js/events.js', './js/share.js', './js/app.js', './manifest.json'];
 
 self.addEventListener('install', e => {
@@ -13,5 +13,13 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.url.includes('cdn.jsdelivr.net')) return;
-  e.respondWith(caches.match(e.request).then(c => c || fetch(e.request)));
+  e.respondWith(
+    fetch(e.request)
+      .then(response => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+        return response;
+      })
+      .catch(() => caches.match(e.request))
+  );
 });
