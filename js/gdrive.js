@@ -98,11 +98,12 @@ async function gdriveUploadAndShare(cal) {
 
   if (fileId) {
     // Update
-    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+    const r = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${gdriveToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+    toast(`Drive actualizado (${r.status}) ${fileId.substring(0,8)}...`);
   } else {
     // Create
     const metadata = { name: fileName, mimeType: 'application/json' };
@@ -149,7 +150,7 @@ async function gdriveReadPublic(fileId) {
 /* Debounced Drive upload — 5s after last change */
 let _driveTimer = null;
 function scheduleDriveSync() {
-  if (!gdriveToken || !currentCal || currentCal.readonly || !currentCal.driveFileId) return;
+  if (!gdriveToken || !currentCal || currentCal.readonly) return;
   clearTimeout(_driveTimer);
   _driveTimer = setTimeout(() => gdriveUploadAndShare(currentCal).catch(e => console.warn('Drive sync:', e)), 5000);
 }
