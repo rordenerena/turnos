@@ -142,6 +142,13 @@ function patternApply() {
   calRender();
   renderPatternsList();
   toast('Patrón aplicado ✓');
+
+  // Clear pattern form
+  patternSeq = [];
+  patternRenderSeq();
+  document.getElementById('pattern-start').value = '';
+  document.getElementById('pattern-end').value = '';
+  document.getElementById('pattern-month').value = '';
 }
 
 function renderPatternsList() {
