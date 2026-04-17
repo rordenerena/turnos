@@ -30,9 +30,13 @@ async function pushInit() {
     // Re-subscribe to all imported calendars (in case previous subscribe push was missed)
     setTimeout(pushResubscribeAll, 3000);
 
+    // DEBUG: show playerId
+    toast(`🆔 ${myPlayerId || 'sin ID'}`);
+
     // Listen for incoming push data
     OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event) => {
       const data = event.notification.additionalData;
+      toast(`📩 Push recibido: ${JSON.stringify(data).substring(0, 80)}`);
       if (!data) return;
       if (data.calSync) {
         pushHandleSync(data.calSync);
@@ -42,13 +46,14 @@ async function pushInit() {
       if (data.subscribe) {
         storeAddSubscriber(data.subscribe.calId, data.subscribe.playerId);
         event.preventDefault();
-        toast('Nuevo suscriptor registrado ✓');
+        toast(`🔔 Suscriptor: ${data.subscribe.playerId.substring(0, 8)}...`);
       }
     });
 
     // Handle notification click (background notifications)
     OneSignal.Notifications.addEventListener('click', (event) => {
       const data = event.notification.additionalData;
+      toast(`👆 Click push: ${JSON.stringify(data).substring(0, 80)}`);
       if (!data) return;
       if (data.calSync) pushHandleSync(data.calSync);
       if (data.subscribe) storeAddSubscriber(data.subscribe.calId, data.subscribe.playerId);
@@ -82,6 +87,7 @@ function pushResubscribeAll() {
 async function pushNotifySubscribers() {
   if (!currentCal || currentCal.readonly) return;
   const subscribers = storeGetSubscribers(currentCal.id);
+  toast(`📤 Subs: ${subscribers.length} → ${JSON.stringify(subscribers).substring(0, 60)}`);
   if (!subscribers.length) return;
 
   const payload = {
@@ -117,6 +123,7 @@ async function pushNotifySubscribers() {
 
 async function pushRegisterWithOwner(ownerPlayerId, calId) {
   const myId = myPlayerId || storeGetPlayerId();
+  toast(`📨 Registrando con owner: ${ownerPlayerId.substring(0, 8)}... mi ID: ${(myId||'null').substring(0, 8)}`);
   if (!myId || !ownerPlayerId) return;
   const body = {
     app_id: ONESIGNAL_APP_ID,
