@@ -28,6 +28,7 @@ function gdriveRestoreSession() {
     gdriveToken = parsed.access_token;
     gapi.client.setToken({ access_token: gdriveToken });
     gdriveUpdateUI(true);
+    gdriveFetchUser();
     setTimeout(() => gdriveUpdateUI(true), 500);
     setTimeout(gdriveRestoreCalendars, 3000);
   } else {
@@ -57,6 +58,7 @@ function gdriveLogin() {
       }));
       gapi.client.setToken({ access_token: gdriveToken });
       gdriveUpdateUI(true);
+      gdriveFetchUser();
       toast('Drive conectado ✓');
       gdriveRestoreCalendars();
     },
@@ -75,17 +77,37 @@ function gdriveLogout() {
 function gdriveUpdateUI(loggedIn) {
   const btn = document.getElementById('btn-gdrive');
   const actions = document.getElementById('gdrive-actions');
+  const userEl = document.getElementById('gdrive-user');
   if (!btn) return;
   if (loggedIn) {
     btn.textContent = '✅ Conectado a Google Drive';
     btn.disabled = true;
     btn.onclick = null;
     if (actions) actions.classList.remove('hidden');
+    if (userEl) userEl.classList.remove('hidden');
   } else {
     btn.textContent = '🔒 Conectar Google Drive';
     btn.disabled = false;
     btn.onclick = gdriveLogin;
     if (actions) actions.classList.add('hidden');
+    if (userEl) userEl.classList.add('hidden');
+  }
+}
+
+/* Fetch user info from Google OAuth2 */
+async function gdriveFetchUser() {
+  if (!gdriveToken) return;
+  try {
+    const resp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${gdriveToken}` },
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      const userEl = document.getElementById('gdrive-user');
+      if (userEl) userEl.textContent = `👤 ${data.email}`;
+    }
+  } catch (e) {
+    console.warn('Failed to fetch user:', e);
   }
 }
 
