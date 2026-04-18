@@ -89,10 +89,11 @@ function computeEffectiveShifts() {
     const cur = new Date(iterStart);
     while (cur <= iterEnd) {
       const ds = dateStr(cur.getFullYear(), cur.getMonth(), cur.getDate());
-      if (!(ds in result)) {
+      if (!(ds in all)) { // only if no manual shift
         const daysSince = Math.floor((cur - start) / 86400000);
         const idx = ((daysSince % p.sequence.length) + p.sequence.length) % p.sequence.length;
-        result[ds] = [{ type: p.sequence[idx], note: '' }];
+        if (!result[ds]) result[ds] = [];
+        result[ds].push({ type: p.sequence[idx], note: '' });
       }
       cur.setDate(cur.getDate() + 1);
     }
