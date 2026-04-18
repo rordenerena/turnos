@@ -29,7 +29,7 @@ function modalRenderShift() {
   const notesEl = document.getElementById('modal-shift-notes');
   if (!notesEl) return;
   const ro = currentCal && currentCal.readonly;
-  if (!current.length) { notesEl.innerHTML = ''; return; }
+  if (!current.length) { notesEl.innerHTML = '<div class="shift-note-row" style="visibility:hidden"><span class="seq-item">X</span><input type="text" disabled></div>'; return; }
   notesEl.innerHTML = current.map(s => {
     const t = s.type || s;
     return `<div class="shift-note-row">
