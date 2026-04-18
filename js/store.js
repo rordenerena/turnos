@@ -1,7 +1,10 @@
-/* store.js — localStorage CRUD for multi-calendar support */
+/* store.js — preferencias, metadatos y suscripciones auxiliares */
 
-const STORE_KEY = 'turnos_calendars';
-const ACTIVE_KEY = 'turnos_active';
+const ACTIVE_KEY = 'turnos_active_source';
+const IMPORTS_KEY = 'turnos_imported_feeds';
+const OWNER_META_KEY = 'turnos_owner_meta';
+const AUTH_TOKEN_KEY = 'turnos_google_token';
+const LEGACY_STORE_KEY = 'turnos_calendars';
 
 function uuid() {
   return crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -10,114 +13,99 @@ function uuid() {
   });
 }
 
-function storeGetAll() {
-  return JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
-}
-
-function storeSaveAll(cals) {
-  localStorage.setItem(STORE_KEY, JSON.stringify(cals));
-}
-
-function storeGet(id) {
-  return storeGetAll()[id] || null;
-}
-
-function storeSave(cal, options = {}) {
-  const cals = storeGetAll();
-  if (options.touchUpdatedAt !== false) {
-    cal.updatedAt = new Date().toISOString();
+function storeReadJSON(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
   }
-  if (options.syncedAt) {
-    cal.lastSyncedAt = options.syncedAt;
-  }
-  cals[cal.id] = cal;
-  storeSaveAll(cals);
 }
 
-function storeDelete(id) {
-  const cals = storeGetAll();
-  delete cals[id];
-  storeSaveAll(cals);
+function storeWriteJSON(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
 }
 
 function storeGetActive() {
-  return localStorage.getItem(ACTIVE_KEY);
+  return localStorage.getItem(ACTIVE_KEY) || null;
 }
 
 function storeSetActive(id) {
   localStorage.setItem(ACTIVE_KEY, id);
 }
 
-function storeGetMine() {
-  const cals = storeGetAll();
-  return Object.values(cals).filter(c => !c.readonly);
+function storeGetOwnerMeta() {
+  return storeReadJSON(OWNER_META_KEY, null);
+}
+
+function storeSaveOwnerMeta(meta) {
+  storeWriteJSON(OWNER_META_KEY, meta);
+}
+
+function storeClearOwnerMeta() {
+  localStorage.removeItem(OWNER_META_KEY);
+}
+
+function storeGetImportedMap() {
+  return storeReadJSON(IMPORTS_KEY, {});
+}
+
+function storeSaveImportedMap(imports) {
+  storeWriteJSON(IMPORTS_KEY, imports);
 }
 
 function storeGetImported() {
-  const cals = storeGetAll();
-  return Object.values(cals).filter(c => c.readonly);
+  return Object.values(storeGetImportedMap()).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'));
 }
 
-function storeCreateCalendar(name) {
-  const cal = {
-    id: uuid(),
-    name: name || 'Mi calendario',
-    version: 1,
-    shifts: {},
-    events: {},
-    patterns: [],
-    readonly: false,
-    createdAt: new Date().toISOString(),
+function storeGetImportedById(id) {
+  return storeGetImportedMap()[id] || null;
+}
+
+function storeSaveImported(source) {
+  const imports = storeGetImportedMap();
+  const previous = imports[source.id] || {};
+  imports[source.id] = {
+    ...previous,
+    ...source,
+    readonly: true,
     updatedAt: new Date().toISOString(),
   };
-  storeSave(cal);
-  return cal;
+  storeSaveImportedMap(imports);
+  return imports[source.id];
 }
 
-function storeImportCalendar(data) {
-  const cals = storeGetAll();
-  const existing = cals[data.id];
-  const syncedAt = new Date().toISOString();
-  const remoteUpdatedAt = data.updatedAt || syncedAt;
-  if (existing) {
-    // Update existing imported calendar preserving remote freshness
-    existing.name = data.name;
-    existing.shifts = data.shifts;
-    existing.events = data.events;
-    existing.patterns = data.patterns;
-    existing.updatedAt = remoteUpdatedAt;
-    existing.readonly = true;
-    if (data.driveFileId) existing.driveFileId = data.driveFileId;
-    storeSave(existing, { touchUpdatedAt: false, syncedAt });
-    return { cal: existing, isNew: false };
-  }
-  // New import
-  const cal = { ...data, readonly: true, updatedAt: remoteUpdatedAt };
-  storeSave(cal, { touchUpdatedAt: false, syncedAt });
-  return { cal, isNew: true };
+function storeDeleteImported(id) {
+  const imports = storeGetImportedMap();
+  delete imports[id];
+  storeSaveImportedMap(imports);
 }
 
-/* Ensure at least one own calendar exists */
-function storeEnsureOwn() {
-  const mine = storeGetMine();
-  if (mine.length === 0) {
-    const name = storeGetPendingName();
-    if (name) {
-      const cal = storeCreateCalendar(`Turnos de ${name}`);
-      storeSetActive(cal.id);
-      return cal;
-    }
-    // No name yet — trigger onboarding
-    setTimeout(() => document.dispatchEvent(new CustomEvent('onboard')) );
-    return null;
-  }
-  return mine[0];
+function storeClearImports() {
+  localStorage.removeItem(IMPORTS_KEY);
 }
 
-function storeSavePendingName(name) {
-  try { localStorage.setItem('pendingName', name); } catch {}
+function storeBuildImportedSource(meta) {
+  return {
+    id: meta.id,
+    name: meta.name || 'Calendario importado',
+    readonly: true,
+    sourceType: meta.sourceType || 'ical',
+    icalUrl: meta.icalUrl,
+    googleCalendarId: meta.googleCalendarId || null,
+    publicIcalUrl: meta.icalUrl,
+    shifts: meta.cache?.shifts || {},
+    events: meta.cache?.events || {},
+    patterns: [],
+    lastSyncedAt: meta.lastSyncedAt || null,
+    counts: meta.counts || { shifts: 0, events: 0 },
+  };
 }
 
-function storeGetPendingName() {
-  try { return localStorage.getItem('pendingName'); } catch { return null; }
+function storeGetCachedSources() {
+  return storeGetImported().map(storeBuildImportedSource);
+}
+
+function storeReadLegacyCalendars() {
+  return storeReadJSON(LEGACY_STORE_KEY, {});
 }

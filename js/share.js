@@ -1,40 +1,18 @@
-/* share.js — Compress calendar data, generate QR, import from URL hash */
+/* share.js — compartir e importar vía iCal público */
 
-function shareCompress(cal) {
-  const payload = {
-    id: cal.id,
-    name: cal.name,
-    shifts: cal.shifts,
-    events: cal.events,
-    patterns: cal.patterns,
-    updatedAt: cal.updatedAt,
-  };
-  const json = JSON.stringify(payload);
-  const compressed = pako.deflate(new TextEncoder().encode(json));
-  return btoa(String.fromCharCode(...compressed));
-}
-
-function shareDecompress(b64) {
-  const binary = atob(b64);
-  const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
-  const decompressed = pako.inflate(bytes);
-  const json = new TextDecoder().decode(decompressed);
-  return JSON.parse(json);
+function shareBuildImportUrl(icalUrl) {
+  return `${location.origin}${location.pathname}#ical=${encodeURIComponent(icalUrl)}`;
 }
 
 async function shareGenerate() {
-  if (!currentCal || currentCal.readonly) { toast('Selecciona tu propio calendario'); return; }
-  try {
-    const compressed = shareCompress(currentCal);
-    const url = `${location.origin}${location.pathname}#cal=${compressed}`;
-
-    QRCode.toCanvas(document.getElementById('qr-canvas'), url, { width: 250, margin: 2, errorCorrectionLevel: 'L' });
-    document.getElementById('share-url').textContent = url;
-    document.getElementById('qr-container').classList.remove('hidden');
-    toast('QR generado ✓');
-  } catch (e) {
-    toast('Error al generar: ' + e.message);
-  }
+  if (!currentCal || currentCal.readonly) { toast('Seleccioná tu calendario'); return; }
+  const icalUrl = currentCal.publicIcalUrl;
+  if (!icalUrl) { toast('Todavía no está listo el enlace público'); return; }
+  const url = shareBuildImportUrl(icalUrl);
+  await QRCode.toCanvas(document.getElementById('qr-canvas'), url, { width: 250, margin: 2, errorCorrectionLevel: 'L' });
+  document.getElementById('share-url').textContent = url;
+  document.getElementById('qr-container').classList.remove('hidden');
+  toast('QR generado ✓');
 }
 
 function shareCopyLink() {
@@ -44,162 +22,361 @@ function shareCopyLink() {
 
 async function shareNative() {
   const url = document.getElementById('share-url').textContent;
-  if (!url) { toast('Genera el link primero'); return; }
-  if (!navigator.share) {
-    toast('Compartir no disponible en este dispositivo');
-    return;
-  }
+  if (!url) { toast('Generá el link primero'); return; }
+  if (!navigator.share) { toast('Compartir no disponible en este dispositivo'); return; }
   try {
     await navigator.share({
       title: 'Calendario de Turnos',
-      text: `Te comparto mi calendario de turnos  "${currentCal.name}":`,
-      url: url,
+      text: 'Te comparto mi calendario de turnos.',
+      url,
     });
-  } catch (e) {
-    if (e.name !== 'AbortError') toast('Error al compartir');
+  } catch (error) {
+    if (error.name !== 'AbortError') toast('Error al compartir');
   }
 }
 
-function shareCheckUrl() {
-  const hash = location.hash;
-  if (!hash.startsWith('#cal=')) return false;
+function icalUnfold(text) {
+  return text.replace(/\r\n[ \t]/g, '').replace(/\r/g, '\n');
+}
+
+function icalDecodeText(text) {
+  return String(text || '')
+    .replace(/\\n/gi, '\n')
+    .replace(/\\,/g, ',')
+    .replace(/\\;/g, ';')
+    .replace(/\\\\/g, '\\');
+}
+
+function icalParseLine(line) {
+  const idx = line.indexOf(':');
+  if (idx < 0) return null;
+  const left = line.slice(0, idx);
+  const value = line.slice(idx + 1);
+  const [name, ...params] = left.split(';');
+  return { name: name.toUpperCase(), params, value };
+}
+
+function icalDateValue(value) {
+  const clean = (value || '').replace(/Z$/, '');
+  if (/^\d{8}$/.test(clean)) return `${clean.slice(0, 4)}-${clean.slice(4, 6)}-${clean.slice(6, 8)}`;
+  if (/^\d{8}T/.test(clean)) return `${clean.slice(0, 4)}-${clean.slice(4, 6)}-${clean.slice(6, 8)}`;
+  return value || '';
+}
+
+function icalParse(text) {
+  const lines = icalUnfold(text).split('\n');
+  const calendar = { name: '', events: [] };
+  let current = null;
+
+  lines.forEach(rawLine => {
+    const line = rawLine.trimEnd();
+    if (!line) return;
+    if (line === 'BEGIN:VEVENT') {
+      current = { exdates: [] };
+      return;
+    }
+    if (line === 'END:VEVENT') {
+      if (current) calendar.events.push(current);
+      current = null;
+      return;
+    }
+    const parsed = icalParseLine(line);
+    if (!parsed) return;
+    const value = icalDecodeText(parsed.value);
+
+    if (!current) {
+      if (parsed.name === 'X-WR-CALNAME') calendar.name = value;
+      return;
+    }
+
+    if (parsed.name === 'SUMMARY') current.summary = value;
+    else if (parsed.name === 'DESCRIPTION') current.description = value;
+    else if (parsed.name === 'UID') current.uid = value;
+    else if (parsed.name === 'STATUS') current.status = value;
+    else if (parsed.name === 'RRULE') current.rrule = value;
+    else if (parsed.name === 'DTSTART') current.dtstart = icalDateValue(value);
+    else if (parsed.name === 'DTEND') current.dtend = icalDateValue(value);
+    else if (parsed.name === 'RECURRENCE-ID') current.recurrenceId = icalDateValue(value);
+    else if (parsed.name === 'EXDATE') value.split(',').forEach(item => current.exdates.push(icalDateValue(item)));
+  });
+  return calendar;
+}
+
+function icalParseRRule(rrule) {
+  const result = {};
+  String(rrule || '').split(';').forEach(part => {
+    const [key, value] = part.split('=');
+    if (key && value) result[key] = value;
+  });
+  return result;
+}
+
+function icalShiftSummary(summary) {
+  return ['M', 'T', 'N', 'L', 'R'].includes(summary) ? summary : null;
+}
+
+function googleCalendarIdFromIcalUrl(icalUrl) {
   try {
-    const b64 = hash.substring(5);
-    const data = shareDecompress(b64);
-    if (!data.id || !data.name) { toast('Datos inválidos'); return false; }
-    const result = storeImportCalendar(data);
-    storeSetActive(result.cal.id);
-    currentCal = result.cal;
-    // Clean URL hash without reloading
-    history.replaceState(null, '', location.pathname + location.search);
-    toast(result.isNew ? `Importado "${data.name}" ✓` : `Actualizado "${data.name}" ✓`);
-    renderCalSelector();
-    calRender();
-    switchTab('calendar');
-    return true;
-  } catch (e) {
-    toast('Error al importar: ' + e.message);
-    return false;
+    const url = new URL(icalUrl);
+    if (!/calendar\.google\.com$/i.test(url.hostname)) return null;
+    const parts = url.pathname.split('/').filter(Boolean);
+    const icalIdx = parts.indexOf('ical');
+    if (icalIdx < 0 || !parts[icalIdx + 1]) return null;
+    return decodeURIComponent(parts[icalIdx + 1]);
+  } catch {
+    return null;
   }
 }
 
-function calItemCount(c) {
-  const s = Object.keys(c.shifts || {}).length;
-  const e = Object.keys(c.events || {}).length;
-  const p = (c.patterns || []).length;
+function icalPush(target, date, item) {
+  if (!target[date]) target[date] = [];
+  target[date].push(item);
+}
+
+function icalBuildSource(meta, text) {
+  const parsed = icalParse(text);
+  const range = getVisibleWindowRange();
+  const cancellations = new Set();
+  const overrides = [];
+  const recurring = [];
+  const singles = [];
+
+  parsed.events.forEach(event => {
+    if (event.recurrenceId) {
+      if ((event.status || '').toUpperCase() === 'CANCELLED') cancellations.add(`${event.uid}|${event.recurrenceId}`);
+      else overrides.push(event);
+      return;
+    }
+    if (event.rrule) recurring.push(event);
+    else singles.push(event);
+  });
+
+  const shifts = {};
+  const events = {};
+
+  function addOccurrence(event, date) {
+    const shiftType = icalShiftSummary(event.summary || '');
+    if (shiftType) {
+      icalPush(shifts, date, { type: shiftType, note: event.description || '', source: { kind: 'ical' } });
+    } else {
+      icalPush(events, date, { text: event.summary || '', source: { kind: 'ical' } });
+    }
+  }
+
+  singles.forEach(event => {
+    if (event.dtstart >= range.start && event.dtstart < range.endExclusive) addOccurrence(event, event.dtstart);
+  });
+
+  recurring.forEach(event => {
+    const rule = icalParseRRule(event.rrule);
+    if (rule.FREQ !== 'DAILY') return;
+    const interval = Number(rule.INTERVAL || 1);
+    const until = rule.UNTIL ? icalDateValue(rule.UNTIL) : addDays(range.endExclusive, -1);
+    const exdates = new Set(event.exdates || []);
+    let cursor = event.dtstart;
+    while (cursor <= until && cursor < range.endExclusive) {
+      if (cursor >= range.start && !exdates.has(cursor) && !cancellations.has(`${event.uid}|${cursor}`)) addOccurrence(event, cursor);
+      cursor = addDays(cursor, interval);
+    }
+  });
+
+  overrides.forEach(event => {
+    if (event.recurrenceId >= range.start && event.recurrenceId < range.endExclusive) addOccurrence(event, event.recurrenceId);
+  });
+
+  return {
+    id: meta.id,
+    name: parsed.name || meta.name || 'Calendario importado',
+    readonly: true,
+    sourceType: 'ical',
+    googleCalendarId: meta.googleCalendarId || googleCalendarIdFromIcalUrl(meta.icalUrl),
+    icalUrl: meta.icalUrl,
+    publicIcalUrl: meta.icalUrl,
+    shifts,
+    events,
+    patterns: [],
+    lastSyncedAt: new Date().toISOString(),
+    counts: {
+      shifts: Object.values(shifts).reduce((sum, items) => sum + items.length, 0),
+      events: Object.values(events).reduce((sum, items) => sum + items.length, 0),
+    },
+  };
+}
+
+function shareBuildGoogleSource(meta, items) {
+  const shifts = {};
+  const events = {};
+
+  items.forEach(event => {
+    if (event.status === 'cancelled') return;
+    const date = event.start?.date || event.originalStartTime?.date;
+    if (!date) return;
+    const summary = (event.summary || '').trim();
+    const shiftType = icalShiftSummary(summary);
+    if (shiftType) {
+      icalPush(shifts, date, { type: shiftType, note: event.description || '', source: { kind: 'google-public' } });
+      return;
+    }
+    icalPush(events, date, { text: summary, source: { kind: 'google-public' } });
+  });
+
+  return {
+    id: meta.id,
+    name: meta.name || 'Calendario importado',
+    readonly: true,
+    sourceType: 'google-public',
+    googleCalendarId: meta.googleCalendarId,
+    icalUrl: meta.icalUrl,
+    publicIcalUrl: meta.icalUrl,
+    shifts,
+    events,
+    patterns: [],
+    lastSyncedAt: new Date().toISOString(),
+    counts: {
+      shifts: Object.values(shifts).reduce((sum, dayItems) => sum + dayItems.length, 0),
+      events: Object.values(events).reduce((sum, dayItems) => sum + dayItems.length, 0),
+    },
+  };
+}
+
+async function shareRefreshImportedFromGoogle(meta) {
+  const range = getVisibleWindowRange();
+  const items = await googleCalendarListAll(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(meta.googleCalendarId)}/events`, {
+    singleEvents: 'true',
+    showDeleted: 'false',
+    maxResults: '2500',
+    timeMin: `${range.start}T00:00:00Z`,
+    timeMax: `${range.endExclusive}T00:00:00Z`,
+  });
+  return shareBuildGoogleSource(meta, items);
+}
+
+async function shareRefreshImportedCalendar(id, options = {}) {
+  const meta = storeGetImportedById(id);
+  if (!meta?.icalUrl) throw new Error('No existe esa suscripción');
+  const googleCalendarId = meta.googleCalendarId || googleCalendarIdFromIcalUrl(meta.icalUrl);
+  const hydratedMeta = googleCalendarId ? { ...meta, googleCalendarId } : meta;
+  if (googleCalendarId && !googleCalendarHasSession()) {
+    throw new Error('Tu sesión de Google venció. Iniciá sesión de nuevo para actualizar este calendario.');
+  }
+  const source = (googleCalendarId && googleCalendarHasSession())
+    ? await shareRefreshImportedFromGoogle(hydratedMeta)
+    : await (async () => {
+        const response = await fetch(meta.icalUrl, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`No se pudo leer el iCal (${response.status})`);
+        const text = await response.text();
+        return icalBuildSource(hydratedMeta, text);
+      })();
+  storeSaveImported({
+    id: source.id,
+    name: source.name,
+    icalUrl: source.icalUrl,
+    googleCalendarId: source.googleCalendarId || null,
+    sourceType: source.sourceType,
+    lastSyncedAt: source.lastSyncedAt,
+    counts: source.counts,
+    cache: {
+      shifts: source.shifts,
+      events: source.events,
+    },
+  });
+  if (!options.silent) renderImportedList();
+  if (currentCal && currentCal.id === source.id) {
+    currentCal = source;
+    calRender();
+  }
+  return source;
+}
+
+async function shareImportByUrl(icalUrl) {
+  const googleCalendarId = googleCalendarIdFromIcalUrl(icalUrl);
+  const id = googleCalendarId
+    ? `import:gcal:${googleCalendarId}`
+    : `import:${btoa(icalUrl).replace(/=+$/g, '').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+  storeSaveImported({ id, icalUrl, googleCalendarId, sourceType: googleCalendarId ? 'google-public' : 'ical', name: 'Calendario importado' });
+  return shareRefreshImportedCalendar(id, { silent: true });
+}
+
+async function shareCheckUrl() {
+  const hash = location.hash || '';
+  if (!hash.startsWith('#ical=')) return false;
+  const icalUrl = decodeURIComponent(hash.slice(6));
+  history.replaceState(null, '', location.pathname + location.search);
+  const imported = await shareImportByUrl(icalUrl);
+  currentCal = imported;
+  storeSetActive(imported.id);
+  renderCalSelector();
+  renderImportedList();
+  calRender();
+  switchTab('calendar');
+  toast(`Importado "${imported.name}" ✓`);
+  return true;
+}
+
+function calItemCount(meta) {
+  const counts = meta.counts || { shifts: 0, events: 0 };
   const parts = [];
-  if (s) parts.push(`${s} días`);
-  if (e) parts.push(`${e} eventos`);
-  if (p) parts.push(`${p} patrones`);
-  return parts.length ? ` (${parts.join(', ')})` : ' (vacío)';
+  if (counts.shifts) parts.push(`${counts.shifts} turnos`);
+  if (counts.events) parts.push(`${counts.events} eventos`);
+  return parts.length ? ` (${parts.join(', ')})` : ' (sin datos cacheados)';
 }
 
 function renderImportedList() {
   const el = document.getElementById('imported-list');
-  const mine = storeGetMine();
-  const imported = storeGetImported();
+  const imports = storeGetImported();
   let html = '';
 
-  // Own calendars
-  if (mine.length) {
-    html += '<h3 style="margin:8px 0 4px">Mis calendarios</h3>';
-    html += mine.map(c => `
-    <div class="imported-item">
-      <div>
-        <div class="imp-name">✏️ ${c.name}${calItemCount(c)}</div>
-        <div class="imp-date">Actualizado: ${new Date(c.updatedAt).toLocaleString('es')}</div>
+  if (googleOwnerCalendar) {
+    html += `
+      <div class="imported-item">
+        <div>
+          <div class="imp-name">✏️ Mi calendario</div>
+          <div class="imp-date">Feed público: ${escapeHtml(googleOwnerCalendar.publicIcalUrl)}</div>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-sm btn-primary" onclick="selectCalendar('${googleOwnerCalendar.id}');switchTab('calendar')">Ver</button>
+        </div>
       </div>
-      <div style="display:flex;gap:4px">
-        <button class="btn btn-sm btn-primary" onclick="selectCalendar('${c.id}');switchTab('calendar')">Ver</button>
-        <button class="btn btn-sm btn-danger" onclick="removeOwn('${c.id}')">✕</button>
-      </div>
-    </div>`).join('');
+    `;
   }
 
-  // Imported calendars
-  if (imported.length) {
+  if (imports.length) {
     html += '<h3 style="margin:12px 0 4px">Calendarios importados</h3>';
-    html += imported.map(c => `
-    <div class="imported-item">
-      <div>
-        <div class="imp-name">👁 ${c.name}${calItemCount(c)}</div>
-        <div class="imp-date">Actualizado: ${new Date(c.updatedAt).toLocaleString('es')}</div>
+    html += imports.map(meta => `
+      <div class="imported-item">
+        <div>
+          <div class="imp-name">👁 ${escapeHtml(meta.name || 'Calendario importado')}${calItemCount(meta)}</div>
+          <div class="imp-date">Actualizado: ${meta.lastSyncedAt ? new Date(meta.lastSyncedAt).toLocaleString('es') : 'pendiente'}</div>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-sm" onclick="refreshImported('${meta.id}')">🔄</button>
+          <button class="btn btn-sm btn-primary" onclick="selectCalendar('${meta.id}');switchTab('calendar')">Ver</button>
+          <button class="btn btn-sm btn-danger" onclick="removeImported('${meta.id}')">✕</button>
+        </div>
       </div>
-      <div style="display:flex;gap:4px">
-        <button class="btn btn-sm btn-primary" onclick="selectCalendar('${c.id}');switchTab('calendar')">Ver</button>
-        <button class="btn btn-sm btn-danger" onclick="removeImported('${c.id}')">✕</button>
-      </div>
-    </div>`).join('');
+    `).join('');
   }
 
-  el.innerHTML = html;
+  el.innerHTML = html || '<p class="hint">Todavía no importaste calendarios.</p>';
 }
 
-function removeOwn(id) {
-  const mine = storeGetMine();
-  if (!confirm('¿Eliminar este calendario?')) return;
-  const cal = storeGet(id);
-  if (gdriveToken && cal && cal.driveFileId) {
-    fetch(`https://www.googleapis.com/drive/v3/files/${cal.driveFileId}`, {
-      method: 'DELETE', headers: { Authorization: `Bearer ${gdriveToken}` },
-    }).catch(() => {});
+async function refreshImported(id) {
+  try {
+    await shareRefreshImportedCalendar(id);
+    toast('Calendario actualizado ✓');
+  } catch (error) {
+    toast(`Error al actualizar: ${error.message}`);
   }
-  storeDelete(id);
-  // If that was the last own calendar, create a new empty one
-  let newCurrent = storeGetMine()[0];
-  if (!newCurrent) {
-    newCurrent = storeCreateCalendar('Mi calendario');
-    toast('Creado nuevo calendario vacío');
-  }
-  if (currentCal && currentCal.id === id) {
-    currentCal = newCurrent;
-    storeSetActive(currentCal.id);
-  }
-  renderImportedList();
-  renderCalSelector();
-  toast('Calendario eliminado');
 }
 
 function removeImported(id) {
-  storeDelete(id);
-  // If we were viewing this one, switch to own calendar
+  storeDeleteImported(id);
   if (currentCal && currentCal.id === id) {
-    const mine = storeGetMine();
-    currentCal = mine[0] || storeEnsureOwn();
-    storeSetActive(currentCal.id);
+    currentCal = googleOwnerCalendar;
+    if (currentCal) storeSetActive(currentCal.id);
   }
   renderImportedList();
   renderCalSelector();
+  calRender();
   toast('Calendario eliminado');
-}
-
-/* Export / Import JSON file */
-function exportJSON() {
-  if (!currentCal) return;
-  const blob = new Blob([JSON.stringify(currentCal, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `turnos-${currentCal.name}.json`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-function importJSON(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const data = JSON.parse(reader.result);
-      if (!data.id) data.id = uuid();
-      const result = storeImportCalendar(data);
-      storeSetActive(result.cal.id);
-      currentCal = result.cal;
-      renderCalSelector();
-      calRender();
-      toast(`Importado "${data.name}" ✓`);
-    } catch { toast('Archivo JSON inválido'); }
-  };
-  reader.readAsText(file);
-  e.target.value = '';
 }

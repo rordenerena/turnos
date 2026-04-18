@@ -1,20 +1,22 @@
-/* app.js — Bootstrap, tab switching, calendar selector */
+/* app.js — bootstrap, auth obligatoria y navegación */
 
-/* Header tap — 5 taps to show danger section */
 let _headerTaps = 0;
 let _headerTimer = null;
+
 function headerTap() {
   _headerTaps++;
   clearTimeout(_headerTimer);
-  _headerTimer = setTimeout(() => _headerTaps = 0, 2000);
+  _headerTimer = setTimeout(() => { _headerTaps = 0; }, 2000);
   if (_headerTaps >= 5) {
     _headerTaps = 0;
     const el = document.getElementById('danger-section');
-    if (el) { el.classList.toggle('hidden'); toast(el.classList.contains('hidden') ? 'Modo desarrollador desactivado' : '⚠️ Modo desarrollador activado'); }
+    if (el) {
+      el.classList.toggle('hidden');
+      toast(el.classList.contains('hidden') ? 'Modo desarrollador desactivado' : '⚠️ Modo desarrollador activado');
+    }
   }
 }
 
-/* Theme */
 function setTheme(mode) {
   localStorage.setItem('turnos_theme', mode);
   applyTheme(mode);
@@ -26,7 +28,6 @@ function applyTheme(mode) {
   else document.documentElement.removeAttribute('data-theme');
 }
 
-// Apply saved theme immediately
 applyTheme(localStorage.getItem('turnos_theme') || 'auto');
 
 function toast(msg) {
@@ -42,13 +43,13 @@ function showUpdateToast() {
   el.innerHTML = '🆕 Nueva versión disponible <button class="btn btn-sm btn-primary" style="margin-left:8px" onclick="location.reload()">Actualizar</button>';
   el.classList.remove('hidden');
   clearTimeout(el._t);
-  // No auto-hide — persistent until user acts
 }
 
 function switchTab(tab) {
   localStorage.setItem('turnos_tab', tab);
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === `tab-${tab}`));
+  document.querySelectorAll('.tab').forEach(item => item.classList.toggle('active', item.dataset.tab === tab));
+  document.querySelectorAll('.tab-content').forEach(item => item.classList.toggle('active', item.id === `tab-${tab}`));
+
   if (tab === 'shared') {
     renderImportedList();
     document.getElementById('qr-container').classList.add('hidden');
@@ -56,165 +57,161 @@ function switchTab(tab) {
   if (tab === 'patterns') {
     renderPatternsList();
     const today = new Date();
-    document.getElementById('pattern-start').value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-    document.getElementById('pattern-end').value = `${today.getFullYear()+1}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    document.getElementById('pattern-start').value = isoDate(today);
+    document.getElementById('pattern-end').value = isoDate(new Date(today.getFullYear() + 1, today.getMonth(), today.getDate()));
     document.getElementById('pattern-month').value = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
   }
   if (tab === 'settings') {
-    document.getElementById('my-cal-name').value = currentCal && !currentCal.readonly ? currentCal.name : '';
     document.getElementById('theme-select').value = localStorage.getItem('turnos_theme') || 'auto';
-    gdriveUpdateUI(!!gdriveToken);
+    document.getElementById('google-user-name').textContent = googleProfile ? `👤 ${googleProfile.name || googleProfile.email}` : 'Sin sesión';
+    document.getElementById('owner-feed-url').textContent = googleOwnerCalendar?.publicIcalUrl || 'Pendiente';
   }
 }
 
 function renderCalSelector() {
   const sel = document.getElementById('cal-selector');
-  const all = storeGetAll();
+  const items = [];
+  if (googleOwnerCalendar) items.push(googleOwnerCalendar);
+  items.push(...storeGetCachedSources());
   const activeId = currentCal ? currentCal.id : storeGetActive();
-  sel.innerHTML = Object.values(all).map(c =>
-    `<option value="${c.id}"${c.id === activeId ? ' selected' : ''}>${c.readonly ? '👁 ' : '✏️ '}${c.name}</option>`
-  ).join('');
+  sel.innerHTML = items.map(item => `
+    <option value="${item.id}"${item.id === activeId ? ' selected' : ''}>${item.readonly ? '👁' : '✏️'} ${escapeHtml(item.name)}</option>
+  `).join('');
 }
 
-function selectCalendar(id) {
-  currentCal = storeGet(id);
-  if (!currentCal) return;
+async function selectCalendar(id) {
+  if (googleOwnerCalendar && id === googleOwnerCalendar.id) {
+    currentCal = googleOwnerCalendar;
+    storeSetActive(id);
+    renderCalSelector();
+    calRender();
+    renderPatternsList();
+    return;
+  }
+
+  const importedMeta = storeGetImportedById(id);
+  if (!importedMeta) return;
+  currentCal = storeBuildImportedSource(importedMeta);
   storeSetActive(id);
-  if (currentCal.readonly) switchTab('calendar');
   renderCalSelector();
   calRender();
-  renderPatternsList();
+  try {
+    currentCal = await shareRefreshImportedCalendar(id, { silent: true });
+    renderCalSelector();
+    calRender();
+  } catch (error) {
+    toast(`No se pudo refrescar el iCal: ${error.message}`);
+  }
 }
 
-function saveMyName() {
-  if (!currentCal || currentCal.readonly) { toast('No puedes renombrar un calendario importado'); return; }
-  const name = document.getElementById('my-cal-name').value.trim();
-  if (!name) { toast('Escribe un nombre'); return; }
-  currentCal.name = name;
-  storeSave(currentCal);
-  renderCalSelector();
-  toast('Nombre guardado ✓');
+async function refreshVisibleSource() {
+  if (!currentCal) return;
+  try {
+    if (currentCal.readonly) {
+      currentCal = await shareRefreshImportedCalendar(currentCal.id, { silent: true });
+    } else {
+      currentCal = await googleCalendarRefreshOwner({ silent: true });
+    }
+  } catch (error) {
+    console.warn(error);
+  }
 }
 
 async function deleteEverything() {
-  if (!confirm('¿Borrar TODOS los calendarios de localStorage y Google Drive?')) return;
-  if (!confirm('⚠️ Esta acción es IRREVERSIBLE. ¿Seguro?')) return;
-  // Delete all Drive files
-  if (gdriveToken) {
-    try {
-      const resp = await gapi.client.drive.files.list({
-        q: "name contains 'turnos-' and mimeType='application/json' and trashed=false",
-        fields: 'files(id,name)',
-        spaces: 'drive',
-      });
-      const files = resp.result.files || [];
-      toast(`Borrando ${files.length} archivos de Drive...`);
-      for (const f of files) {
-        try {
-          await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${gdriveToken}` },
-          });
-        } catch {}
-      }
-    } catch (e) {
-      toast('Error borrando Drive: ' + e.message);
-    }
+  if (!confirm('¿Eliminar el calendario de Turnos y todas las suscripciones locales?')) return;
+  if (!confirm('⚠️ Esta acción es irreversible. ¿Seguro?')) return;
+  try {
+    await googleCalendarDeleteEverythingRemote();
+  } catch (error) {
+    toast(`No se pudo borrar el calendario remoto: ${error.message}`);
+    return;
   }
-  // Clear localStorage
-  localStorage.removeItem(STORE_KEY);
+  storeClearImports();
   localStorage.removeItem(ACTIVE_KEY);
-  localStorage.removeItem('turnos_gdrive_token');
-  localStorage.removeItem('pendingName');
-  currentCal = null;
+  googleCalendarLogout();
   toast('Todo eliminado ✓');
-  setTimeout(() => location.reload(), 1000);
+  setTimeout(() => location.reload(), 800);
 }
 
-function deleteCurrentCalendar() {
-  if (!currentCal) return;
-  if (!confirm(`¿Eliminar "${currentCal.name}"?`)) return;
-  if (gdriveToken && currentCal.driveFileId && !currentCal.readonly) {
-    fetch(`https://www.googleapis.com/drive/v3/files/${currentCal.driveFileId}`, {
-      method: 'DELETE', headers: { Authorization: `Bearer ${gdriveToken}` },
-    }).catch(() => {});
+function logoutGoogle() {
+  googleCalendarLogout();
+  toast('Sesión cerrada');
+  setTimeout(() => location.reload(), 400);
+}
+
+async function appLogin() {
+  try {
+    await googleCalendarLogin();
+    await bootstrapAuthorizedApp();
+  } catch (error) {
+    toast(`No se pudo iniciar sesión: ${error.message}`);
   }
-  storeDelete(currentCal.id);
-  const own = storeEnsureOwn();
-  currentCal = own;
-  storeSetActive(own.id);
+}
+
+async function bootstrapAuthorizedApp() {
+  googleCalendarShowAuth(false);
+  currentCal = await googleCalendarBootstrap();
   renderCalSelector();
   calRender();
-  toast('Calendario eliminado');
-}
-
-/* Init */
-document.addEventListener('DOMContentLoaded', () => {
-  // Initialize calendar system
-  calInit();
-
-  // Check URL hash for shared calendar import first
-  shareCheckUrl();
-
-  // Then ensure we have at least one calendar to show
-  const mine = storeGetMine();
-  const imported = storeGetImported();
-  if (mine.length === 0 && imported.length === 0) {
-    // No calendars at all — show onboarding
-    document.getElementById('onboard').classList.remove('hidden');
-  } else {
-    // Load active or first available calendar (own or imported)
-    const activeId = storeGetActive();
-    currentCal = storeGet(activeId) || mine[0] || imported[0];
-    if (currentCal) {
-      storeSetActive(currentCal.id);
-      renderCalSelector();
-      calRender();
-    }
-  }
-
-  // Restore last active tab
-  const savedTab = localStorage.getItem('turnos_tab');
-  if (savedTab) switchTab(savedTab);
+  renderPatternsList();
   renderImportedList();
 
-  // Init Google Drive backup
-  gdriveInit();
-  // Ensure Drive UI is correct on load
-  setTimeout(() => gdriveUpdateUI(!!gdriveToken), 2000);
+  const activeId = storeGetActive();
+  if (activeId && activeId !== currentCal.id) {
+    await selectCalendar(activeId);
+  } else {
+    storeSetActive(currentCal.id);
+  }
 
-  // Register SW + detect updates
+  const savedTab = localStorage.getItem('turnos_tab');
+  if (savedTab) switchTab(savedTab);
+
+  try {
+    await shareCheckUrl();
+  } catch (error) {
+    toast(`No se pudo importar el iCal: ${error.message}`);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  calInit();
+  renderImportedList();
+
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(reg => {
       setInterval(() => reg.update(), 5 * 60 * 1000);
       reg.addEventListener('updatefound', () => {
-        const newSW = reg.installing;
-        newSW.addEventListener('statechange', () => {
-          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-            showUpdateToast();
-          }
+        const next = reg.installing;
+        next.addEventListener('statechange', () => {
+          if (next.state === 'installed' && navigator.serviceWorker.controller) showUpdateToast();
         });
       });
     }).catch(() => {});
   }
 
-  // Handle links when PWA is already open (launch_handler: focus-existing)
   if ('launchQueue' in window) {
-    launchQueue.setConsumer(launchParams => {
-      if (launchParams.targetURL) {
-        const url = new URL(launchParams.targetURL);
-        if (url.hash.startsWith('#cal=')) {
-          location.hash = url.hash;
-          shareCheckUrl();
-          renderCalSelector();
-          calRender();
-        }
+    launchQueue.setConsumer(async launchParams => {
+      if (!launchParams.targetURL) return;
+      const url = new URL(launchParams.targetURL);
+      if (url.hash.startsWith('#ical=')) {
+        location.hash = url.hash;
+        if (googleCalendarHasSession()) await shareCheckUrl();
       }
     });
   }
+
+  await googleCalendarInit();
+  if (googleCalendarHasSession()) {
+    try {
+      await bootstrapAuthorizedApp();
+      return;
+    } catch (error) {
+      console.warn(error);
+    }
+  }
+  googleCalendarShowAuth(true);
 });
 
-/* QR Scanner */
 let _scanner = null;
 function scanOpen() {
   document.getElementById('scan-overlay').classList.remove('hidden');
@@ -222,16 +219,15 @@ function scanOpen() {
   _scanner.start(
     { facingMode: 'environment' },
     { fps: 10, qrbox: { width: 250, height: 250 } },
-    (text) => {
+    async text => {
       scanClose();
-      // Process the scanned URL
       try {
         const url = new URL(text);
-        if (url.hash) {
+        if (url.hash.startsWith('#ical=')) {
           location.hash = url.hash;
-          shareCheckUrl();
-          renderCalSelector();
-          calRender();
+          await shareCheckUrl();
+        } else {
+          toast('QR no válido');
         }
       } catch {
         toast('QR no válido');
@@ -250,37 +246,9 @@ function scanClose(e) {
 function updateSW() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(regs => {
-      for (const reg of regs) reg.update().catch(() => {});
+      regs.forEach(reg => reg.update().catch(() => {}));
     });
   }
   toast('Actualizando...');
   setTimeout(() => location.reload(), 500);
-}
-
-/* Onboarding */
-document.addEventListener('onboard', () => {
-  document.getElementById('onboard').classList.remove('hidden');
-});
-
-function onboardSubmit() {
-  const name = document.getElementById('onboard-name').value.trim();
-  if (!name) { toast('Escribe tu nombre'); return; }
-  try { localStorage.setItem('pendingName', name); } catch {}
-  document.getElementById('onboard').classList.add('hidden');
-
-  // Initialize calendar system
-  calInit();
-
-  // Create calendar with name
-  const cal = storeCreateCalendar(`Turnos de ${name}`);
-  storeSetActive(cal.id);
-  currentCal = cal;
-
-  renderCalSelector();
-  calRender();
-
-  // Register SW
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  }
 }

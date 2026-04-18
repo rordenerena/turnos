@@ -8,19 +8,16 @@
   <link rel="stylesheet" href="css/styles.css">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/icon-192.svg" type="image/svg+xml">
-  <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.2.2/build/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="https://apis.google.com/js/api.js" async defer></script>
 </head>
 <body>
-  <div id="onboard" class="modal hidden">
+  <div id="auth-gate" class="modal hidden">
     <div class="modal-content">
-      <h2>Bienvenido</h2>
-      <p>¿Cómo te llamas?</p>
-      <input type="text" id="onboard-name" placeholder="Tu nombre" maxlength="30" onkeydown="if(event.key==='Enter')onboardSubmit()">
-      <button class="btn btn-primary" onclick="onboardSubmit()">Continuar</button>
+      <h2>Entrar con Google</h2>
+      <p>Necesitamos tu cuenta de Google para crear y usar tu calendario de Turnos.</p>
+      <button class="btn btn-primary" onclick="appLogin()">Continuar con Google</button>
     </div>
   </div>
 
@@ -54,7 +51,7 @@
 
     <!-- Patterns Tab -->
     <section id="tab-patterns" class="tab-content">
-      <h2>Patrón repetitivo</h2>
+       <h2>Patrón repetitivo</h2>
       <p class="hint">Crea una secuencia de turnos que se repite cíclicamente.</p>
       <div id="pattern-form" class="card">
         <label>Secuencia:</label>
@@ -65,6 +62,7 @@
             <button class="btn shift-T" onclick="patternAdd('T')">T</button>
             <button class="btn shift-N" onclick="patternAdd('N')">N</button>
             <button class="btn shift-L" onclick="patternAdd('L')">L</button>
+            <button class="btn shift-R" onclick="patternAdd('R')">R</button>
             <button class="btn btn-sm" onclick="patternRemoveLast()">⌫</button>
             <button class="btn btn-sm" onclick="patternClear()">Limpiar</button>
           </div>
@@ -92,7 +90,7 @@
     <!-- Share Tab -->
     <section id="tab-shared" class="tab-content">
       <h2>Compartir mi calendario</h2>
-      <p class="hint">Genera un QR o link. Quien lo escanee importa tu calendario.</p>
+      <p class="hint">Genera un QR o link. Quien lo escanee importa la referencia pública iCal de tu calendario.</p>
       <div style="text-align:center;margin:16px 0">
         <button class="btn btn-primary" onclick="shareGenerate()">Compartir Turnos</button>
       </div>
@@ -112,13 +110,6 @@
     <section id="tab-settings" class="tab-content">
       <h2 style="display:flex;justify-content:space-between;align-items:center">Configuración <button class="btn btn-sm btn-ghost" onclick="updateSW()" title="Actualizar app">🔃</button></h2>
       <div class="card">
-        <label>Nombre de mi calendario:</label>
-        <div class="row">
-          <input type="text" id="my-cal-name" placeholder="Mi nombre" maxlength="30">
-          <button class="btn btn-primary btn-sm" onclick="saveMyName()">Guardar</button>
-        </div>
-      </div>
-      <div class="card">
         <label>Tema:</label>
         <select id="theme-select" onchange="setTheme(this.value)">
           <option value="auto">Automático</option>
@@ -127,18 +118,18 @@
         </select>
       </div>
       <div class="card">
-        <h3>Copia de seguridad</h3>
-        <p class="hint">Guarda tus calendarios en Google Drive como backup.</p>
-        <button class="btn" id="btn-gdrive" onclick="gdriveLogin()">🔒 Conectar Google Drive</button>
-        <p id="gdrive-user" class="hint hidden" style="margin:6px 0 0"></p>
-        <div class="row hidden" id="gdrive-actions" style="margin-top:8px;gap:8px">
-          <button class="btn btn-sm btn-accent" onclick="gdriveManualSync()">🔄 Hacer backup</button>
-          <button class="btn btn-sm btn-danger" onclick="gdriveLogout()">Desconectar</button>
-        </div>
+        <h3>Cuenta Google</h3>
+        <p id="google-user-name" class="hint" style="margin:0 0 8px"></p>
+        <button class="btn btn-danger btn-sm" onclick="logoutGoogle()">Cerrar sesión</button>
+      </div>
+      <div class="card">
+        <h3>Feed público</h3>
+        <p class="hint">Este es el feed iCal público que comparte la app.</p>
+        <p id="owner-feed-url" class="share-url"></p>
       </div>
       <div class="card hidden" id="danger-section">
         <h3>Peligro</h3>
-        <button class="btn btn-danger" onclick="deleteEverything()">🗑️ Borrar TODO (local + Drive)</button>
+        <button class="btn btn-danger" onclick="deleteEverything()">🗑️ Borrar calendario remoto y suscripciones</button>
       </div>
     </section>
 
@@ -194,14 +185,14 @@
       <span id="sync-icon">⏳</span>
     </div>
     <div id="toast" class="hidden"></div>
-    <p class="app-version">v18/04/2026 23:30</p>
+    <p class="app-version">v18/04/2026 20:04</p>
   </div>
 
   <script src="js/store.js"></script>
   <script src="js/calendar.js"></script>
   <script src="js/events.js"></script>
   <script src="js/share.js"></script>
-  <script src="js/gdrive.js"></script>
+  <script src="js/gcalendar.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

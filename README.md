@@ -1,132 +1,99 @@
 # 📅 Calendario de Turnos
 
-Calendario web para gestionar turnos de trabajo. Zero config, zero servidor, zero cuentas obligatorias.
+Calendario web para gestionar turnos de trabajo con **Google Calendar como fuente de verdad**. No hay backend: todo corre en el navegador y se publica en GitHub Pages.
+
+## Modelo del producto
+
+- **Login obligatorio con Google** antes de usar la app.
+- La app crea o reutiliza **un único calendario secundario administrado por Turnos** por usuario.
+- Ese calendario se vuelve **público en modo lectura** para compartirlo por iCal.
+- Los turnos se guardan como **eventos de día completo** directamente en Google Calendar.
+- Los patrones se guardan como **series recurrentes** con metadatos en `extendedProperties.private`.
+- Los calendarios importados son **solo lectura** y, si provienen de un Google Calendar público generado por la app, se refrescan usando **Google Calendar API con la sesión activa**; para otros iCal queda un fallback best-effort por feed.
+- `localStorage` queda limitado a **preferencias, caché y suscripciones importadas**, no a los datos dueños.
 
 ## Funcionalidades
 
-- **Turnos**: Mañana (M), Tarde (T), Noche (N), Libre (L), Refuerzo (R) — con colores distintivos
-- **Múltiples turnos por día**: Podés asignar más de un turno al mismo día (ej: M + R)
-- **Notas en turnos**: Cada turno puede tener un comentario (ej: M "Patri" = mañana de Patri)
-- **Patrones repetitivos**: Secuencia cíclica (ej: M,M,T,T,N,N,L,L) aplicable hasta una fecha o a un mes concreto
-- **Eventos**: Texto libre por día (sin horario, solo marcas)
-- **Multi-calendario**: Tu calendario (editable) + los que importes de otros (solo lectura)
-- **Compartir por QR/link**: Los datos van comprimidos en la URL. Escaneo integrado con cámara
-- **Compartir nativo**: Botón para compartir por WhatsApp, Telegram, etc. vía Web Share API
-- **Google Drive sync**: Backup y sincronización opcional vía Google Drive
-- **Tema claro/oscuro**: Automático según el SO o manual desde ⚙️
-- **PWA**: Instalable en móvil, funciona offline
-- **localStorage**: Todo se guarda en el navegador — funciona sin cuentas
+- **Turnos**: Mañana (M), Tarde (T), Noche (N), Libre (L), Refuerzo (R)
+- **Notas por turno**: usando la descripción del evento all-day
+- **Patrones repetitivos**: series recurrentes diarias con `INTERVAL = largo de la secuencia`
+- **Excepciones por día**: cambios y borrados dentro de un patrón usando instancias canceladas, sin aplanar toda la serie
+- **Eventos libres por día**: también como eventos all-day
+- **Compartir por QR/link**: el QR comparte la referencia al iCal público del calendario
+- **Importación read-only**: usando la referencia iCal compartida; los feeds de Google se refrescan por API autenticada y los iCal genéricos usan fallback best-effort
+- **Tema claro/oscuro**
+- **PWA** instalable
 
 ## Cómo funciona el compartir
 
-1. Abrí tu calendario → pestaña "Compartir" → "Compartir Turnos"
-2. Los datos se comprimen con gzip y se codifican en el fragmento `#` de la URL
-3. Si estás conectado a Google Drive, el calendario se sube y el QR incluye el `driveFileId` para sync futuro
-4. El otro escanea el QR (con el botón 📷) o abre el link → se importa automáticamente
-5. Si volvés a compartir después de cambios, el otro escanea de nuevo → se **actualiza** (no duplica)
+1. Iniciás sesión con Google.
+2. La app resuelve o crea tu calendario administrado.
+3. En la pestaña **Compartir**, generás un QR o link.
+4. Ese link lleva una referencia `#ical=...` al feed público de Google Calendar.
+5. El receptor lo abre o escanea y la app guarda una suscripción read-only.
+6. Si el enlace compartido apunta a un Google Calendar público generado por la app, el importado se refresca por Google Calendar API con tu sesión activa; otros iCal usan fallback best-effort.
 
-Cada calendario tiene un UUID único. Si el receptor ya tiene ese ID, se sobreescribe con los datos nuevos.
+## Google Cloud Console
 
-## Google Drive — Sincronización
+1. Crear proyecto y habilitar **Google Calendar API**.
+2. OAuth consent screen → publicar app.
+3. Credentials → OAuth 2.0 Client ID (Web) → agregar origin `https://TU-USUARIO.github.io`.
+4. Poner el Client ID en `js/gcalendar.js`.
 
-La conexión con Google Drive es **opcional**. Sin ella, la app funciona 100% con localStorage.
+La app usa scope completo de Calendar porque necesita:
 
-### Qué hace Drive
-
-- **Backup automático**: Cada cambio en tu calendario se sube a Drive (2.5s después del último cambio)
-- **Sync entre dispositivos**: Si usás la misma cuenta de Google en móvil y tablet, los cambios se sincronizan
-- **Recuperación tras reinstalar**: Si desinstalás la PWA y la volvés a instalar, al loguearte con Google se restauran todos tus calendarios (propios e importados)
-- **Sync de importados**: Los calendarios importados se guardan en tu Drive como backup (con su `driveFileId` original), así al reinstalar podés seguir actualizándolos sin re-escanear QR
-- **Carpeta organizada**: Todos los archivos se guardan en una carpeta "Turnos" en tu Drive
-
-### Flujo de sync
-
-```
-Dispositivo A (conectado a Drive):
-  Cambia turno → 2.5s → se sube a Drive automáticamente
-  Comparte QR → incluye driveFileId → el receptor puede sincronizar después
-
-Dispositivo B (importó el calendario):
-  Escanea QR → importa datos instantáneamente
-  Conecta Drive → puede tocar 🔄 para actualizar desde el Drive del dueño
-  Al abrir la app → auto-sincroniza calendarios importados (si está logueado)
-
-Reinstalación:
-  Instala PWA → pone nombre → conecta Google Drive
-  → Se restauran calendarios propios + importados desde Drive
-  → Si hay duplicado vacío local, se elimina automáticamente
-```
-
-### Quién es la fuente de verdad
-
-**Last write wins**: el último dispositivo que sube a Drive gana. Al abrir la app, se descarga de Drive si hay versión más nueva. Para evitar conflictos, editá desde un solo dispositivo a la vez.
-
-### Lectura pública
-
-Los archivos de calendario en Drive se comparten como públicos (lectura). Esto permite que otros usuarios lean tu calendario sin necesitar autenticación. Para leer desde otro dispositivo logueado, se usa el token OAuth del usuario.
-
-## Deploy en GitHub Pages
-
-1. Subí todos los archivos a un repo
-2. Settings → Pages → Deploy from branch → `main` / `/ (root)`
-3. Listo. No hay nada que configurar.
-
-### Google Cloud Console (para Drive sync)
-
-1. Crear proyecto → habilitar Google Drive API
-2. OAuth consent screen → publicar app
-3. Credentials → OAuth 2.0 Client ID (Web) → agregar origin `https://TU-USUARIO.github.io`
-4. Credentials → API Key → restringir a tu dominio y Google Drive API
-5. Poner Client ID y API Key en `js/gdrive.js`
+- crear el calendario secundario,
+- administrar su ACL pública,
+- crear/editar/borrar eventos e instancias,
+- leer el perfil básico del usuario.
 
 ## Estructura
 
-```
+```text
 turnos/
-├── index.html          # App principal + onboarding + scanner QR
-├── manifest.json       # PWA manifest (standalone, launch_handler)
-├── sw.js               # Service Worker (network-first + cache fallback + update detection)
-├── css/styles.css      # Estilos responsive, tema claro/oscuro, colores por turno
+├── index.html          # App principal + auth gate + scanner QR
+├── manifest.json       # PWA manifest
+├── sw.js               # Service Worker
+├── css/styles.css      # Estilos responsive
 ├── js/
-│   ├── store.js        # localStorage CRUD, UUID, multi-calendario
-│   ├── calendar.js     # Grilla mensual, turnos con notas, patrones
-│   ├── events.js       # Modal de día, eventos CRUD
-│   ├── share.js        # Compresión pako, QR, import/export, scanner
-│   ├── gdrive.js       # Google OAuth, Drive sync, backup/restore
-│   └── app.js          # Bootstrap, selector, tabs, tema, onboarding, scanner
+│   ├── store.js        # Preferencias, metadatos owner e importaciones iCal
+│   ├── calendar.js     # Grilla mensual, edición de turnos y patrones
+│   ├── events.js       # Modal de día y eventos all-day
+│   ├── share.js        # QR/link + parser iCal para importados
+│   ├── gcalendar.js    # Auth Google + capa Google Calendar (sin Drive)
+│   └── app.js          # Bootstrap auth-gated y navegación
 └── icons/              # PNG + SVG icons para PWA
 ```
 
-## Modelo de datos
+## Convenciones de datos en Google Calendar
 
-```json
-{
-  "id": "uuid",
-  "name": "Turnos de Roberto",
-  "version": 1,
-  "readonly": false,
-  "driveFileId": "1abc...",
-  "shifts": {
-    "2026-04-17": [
-      { "type": "M", "note": "Patri" },
-      { "type": "R", "note": "" }
-    ]
-  },
-  "events": {
-    "2026-04-20": [{ "text": "Reunión equipo" }]
-  },
-  "patterns": [
-    { "sequence": ["M","M","T","T","N","N","L","L"], "startDate": "2026-04-01", "endDate": "2026-06-30" }
-  ]
-}
-```
+### Turno manual
 
-## Uso
+- `summary`: `M`, `T`, `N`, `L` o `R`
+- `description`: nota opcional
+- `extendedProperties.private`:
+  - `turnosApp=1`
+  - `turnosKind=shift`
+  - `turnosShiftType=<tipo>`
 
-1. Abrí la web — te pide tu nombre y crea tu calendario
-2. Tocá un día para asignar turno (con nota opcional) o agregar evento
-3. En "Patrones", armá una secuencia y aplicala a un rango de fechas
-4. En "Compartir", generá un QR — quien lo escanee importa tu calendario
-5. En ⚙️: cambiá nombre, tema, conectá Google Drive, actualizá la app o eliminá calendarios
-6. Los calendarios importados se ven en solo lectura (pestañas de edición ocultas)
-7. Botón 🔄 en calendarios importados para actualizar desde Google Drive
+### Patrón
+
+Un patrón crea **un evento recurrente por offset de la secuencia** con:
+
+- `turnosApp=1`
+- `turnosKind=pattern`
+- `turnosPatternId`
+- `turnosSequenceIndex`
+- `turnosSequenceLength`
+- `turnosShiftType`
+
+### Evento libre
+
+- `summary`: texto visible
+- `turnosKind=event`
+
+## Notas
+
+- Ya no existe flujo de Google Drive.
+- Ya no existe snapshot comprimido del calendario en URL.
+- La app ya no usa `localStorage` como fuente de verdad del calendario dueño.

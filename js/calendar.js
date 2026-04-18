@@ -1,8 +1,9 @@
-/* calendar.js — Calendar rendering, navigation, shifts & patterns */
+/* calendar.js — render mensual, turnos y patrones remotos */
 
 let currentCal = null;
 let calYear, calMonth;
 let selectedDate = null;
+let patternSeq = [];
 
 function calInit() {
   const now = new Date();
@@ -11,102 +12,110 @@ function calInit() {
   calInitSwipe();
 }
 
-function calPrev() { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } calRender(); }
-function calNext() { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } calRender(); }
-function calToday() { const n = new Date(); calYear = n.getFullYear(); calMonth = n.getMonth(); calRender(); }
+function getVisibleWindowRange() {
+  const start = new Date(calYear, calMonth - 1, 1);
+  const endExclusive = new Date(calYear, calMonth + 2, 1);
+  return {
+    start: isoDate(start),
+    endExclusive: isoDate(endExclusive),
+  };
+}
+
+function calPrev() {
+  calMonth--;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  calRender();
+  refreshVisibleSource();
+}
+
+function calNext() {
+  calMonth++;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  calRender();
+  refreshVisibleSource();
+}
+
+function calToday() {
+  const n = new Date();
+  calYear = n.getFullYear();
+  calMonth = n.getMonth();
+  calRender();
+  refreshVisibleSource();
+}
 
 function calRender() {
   const label = document.getElementById('cal-month-label');
   const grid = document.getElementById('cal-grid');
-  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   label.textContent = `${months[calMonth]} ${calYear}`;
 
   const first = new Date(calYear, calMonth, 1);
   let startDay = first.getDay() - 1;
   if (startDay < 0) startDay = 6;
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-  const today = new Date();
-  const todayStr = dateStr(today.getFullYear(), today.getMonth(), today.getDate());
-  const effective = computeEffectiveShifts();
+  const todayStr = isoDate(new Date());
 
   let html = '';
   for (let i = 0; i < startDay; i++) html += '<div class="cal-day empty"></div>';
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = dateStr(calYear, calMonth, d);
-    const shifts = effective[ds] || [];
+    const shifts = ((currentCal && currentCal.shifts && currentCal.shifts[ds]) || []).slice().sort(sortShifts);
     const evts = (currentCal && currentCal.events && currentCal.events[ds]) || [];
     html += `<div class="cal-day${ds === todayStr ? ' today' : ''}" onclick="dayClick('${ds}')">`;
     html += `<div class="day-num">${d}</div>`;
     if (shifts.length) {
-      const shiftOrder = { M: 0, T: 1, N: 2, R: 3, L: 4 };
-      shifts.sort((a, b) => (shiftOrder[a.type || a] ?? 5) - (shiftOrder[b.type || b] ?? 5));
       html += '<div class="day-shifts">';
       shifts.forEach(s => {
-        const t = s.type || s;
-        const n = s.note ? ` <small>${s.note}</small>` : '';
-        html += `<div class="day-shift s-${t}">${t}${n}</div>`;
+        const note = s.note ? ` <small>${escapeHtml(s.note)}</small>` : '';
+        html += `<div class="day-shift s-${escapeHtml(s.type)}">${escapeHtml(s.type)}${note}</div>`;
       });
       html += '</div>';
     }
-    if (evts.length) html += `<div class="day-events"><span class="event-dot"></span>${evts.length > 1 ? evts.length : evts[0].text.substring(0, 10)}</div>`;
+    if (evts.length) {
+      html += `<div class="day-events"><span class="event-dot"></span>${escapeHtml(evts.length > 1 ? String(evts.length) : truncateText(evts[0].text, 10))}</div>`;
+    }
     html += '</div>';
   }
   grid.innerHTML = html;
-  const totalCells = startDay + daysInMonth;
-  const rows = Math.ceil(totalCells / 7);
-  grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+  grid.style.gridTemplateRows = `repeat(${Math.ceil((startDay + daysInMonth) / 7)}, 1fr)`;
 
-  // Readonly banner + hide tabs
   const banner = document.getElementById('readonly-banner');
-  const ro = currentCal && currentCal.readonly;
-  if (ro) {
-    banner.innerHTML = `👁 ${currentCal.name} (solo lectura)`;
+  const readonly = !!(currentCal && currentCal.readonly);
+  if (readonly) {
+    banner.textContent = `👁 ${currentCal.name} (solo lectura)`;
     banner.classList.remove('hidden');
   } else {
     banner.classList.add('hidden');
   }
-  document.querySelectorAll('.tab[data-tab="patterns"],.tab[data-tab="shared"],.tab[data-tab="settings"]').forEach(t => t.classList.toggle('hidden', ro));
+  document.querySelectorAll('.tab[data-tab="patterns"],.tab[data-tab="shared"]').forEach(tab => tab.classList.toggle('hidden', readonly));
 }
 
-/* Normalize: "M" → {type:"M",note:""}, {type:"M",note:"x"} stays */
-function normShift(s) { return typeof s === 'string' ? { type: s, note: '' } : s; }
-
-function computeEffectiveShifts() {
-  if (!currentCal) return {};
-  const result = {};
-  const all = currentCal.shifts || {};
-
-  for (const ds in all) {
-    result[ds] = (all[ds] || []).map(normShift);
-  }
-
-  if (!currentCal.patterns) return result;
-  currentCal.patterns.forEach(p => {
-    if (!p.sequence || !p.sequence.length || !p.startDate) return;
-    const start = new Date(p.startDate + 'T00:00:00');
-    const end = p.endDate ? new Date(p.endDate + 'T23:59:59') : new Date(calYear, calMonth + 1, 0, 23, 59, 59);
-    const viewStart = new Date(calYear, calMonth, 1);
-    const viewEnd = new Date(calYear, calMonth + 1, 0);
-    const iterStart = start > viewStart ? start : viewStart;
-    const iterEnd = end < viewEnd ? end : viewEnd;
-    if (iterStart > iterEnd) return;
-    const cur = new Date(iterStart);
-    while (cur <= iterEnd) {
-      const ds = dateStr(cur.getFullYear(), cur.getMonth(), cur.getDate());
-      if (!(ds in all)) { // only if no manual shift
-        const daysSince = Math.floor((cur - start) / 86400000);
-        const idx = ((daysSince % p.sequence.length) + p.sequence.length) % p.sequence.length;
-        if (!result[ds]) result[ds] = [];
-        result[ds].push({ type: p.sequence[idx], note: '' });
-      }
-      cur.setDate(cur.getDate() + 1);
-    }
-  });
-  return result;
+function sortShifts(a, b) {
+  const order = { M: 0, T: 1, N: 2, R: 3, L: 4 };
+  return (order[a.type] ?? 10) - (order[b.type] ?? 10);
 }
 
 function dateStr(y, m, d) {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function isoDate(date) {
+  return dateStr(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function addDays(ds, amount) {
+  const [y, m, d] = ds.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  date.setUTCDate(date.getUTCDate() + amount);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
+function escapeHtml(text) {
+  return String(text || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+function truncateText(text, max) {
+  return text && text.length > max ? `${text.slice(0, max)}…` : (text || '');
 }
 
 function dayClick(ds) {
@@ -114,7 +123,6 @@ function dayClick(ds) {
   modalOpen(ds);
 }
 
-/* Swipe navigation */
 let _touchStartX = 0;
 let _touchStartY = 0;
 function calInitSwipe() {
@@ -133,46 +141,61 @@ function calInitSwipe() {
   }, { passive: true });
 }
 
-function setShift(shift) {
-  if (!currentCal || currentCal.readonly) return;
-  if (!currentCal.shifts) currentCal.shifts = {};
-  if (!currentCal.shifts[selectedDate]) currentCal.shifts[selectedDate] = [];
+function getDayShifts(ds) {
+  return ((currentCal && currentCal.shifts && currentCal.shifts[ds]) || []).slice().sort(sortShifts);
+}
 
-  const shifts = currentCal.shifts[selectedDate].map(normShift);
+async function setShift(shift) {
+  if (!currentCal || currentCal.readonly) return;
+  const current = getDayShifts(selectedDate);
+  const byType = {};
+  current.forEach(item => { byType[item.type] = item; });
+  const nextTypes = current.map(item => item.type);
 
   if (shift === null) {
-    currentCal.shifts[selectedDate] = [];
+    await googleCalendarReplaceDayShifts(selectedDate, []);
   } else {
-    const idx = shifts.findIndex(s => s.type === shift);
-    if (idx >= 0) shifts.splice(idx, 1);
-    else shifts.push({ type: shift, note: '' });
-    currentCal.shifts[selectedDate] = shifts;
+    const idx = nextTypes.indexOf(shift);
+    if (idx >= 0) nextTypes.splice(idx, 1);
+    else nextTypes.push(shift);
+    await googleCalendarReplaceDayShifts(selectedDate, nextTypes.sort((a, b) => sortShifts({ type: a }, { type: b })).map(type => ({
+      type,
+      note: byType[type]?.note || '',
+    })));
   }
 
-  storeSave(currentCal);
-    scheduleDriveSync();
   calRender();
   modalRenderShift();
 }
 
-function setShiftNote(type, note) {
+async function setShiftNote(type, note) {
   if (!currentCal || currentCal.readonly) return;
-  const shifts = (currentCal.shifts[selectedDate] || []).map(normShift);
-  const s = shifts.find(s => s.type === type);
-  if (s) s.note = note.trim();
-  currentCal.shifts[selectedDate] = shifts;
-  storeSave(currentCal);
-    scheduleDriveSync();
+  const next = getDayShifts(selectedDate).map(item => ({
+    type: item.type,
+    note: item.type === type ? note.trim() : (item.note || ''),
+  }));
+  await googleCalendarReplaceDayShifts(selectedDate, next);
   calRender();
+  modalRenderShift();
 }
 
-/* Patterns */
-let patternSeq = [];
-function patternAdd(s) { patternSeq.push(s); patternRenderSeq(); }
-function patternRemoveLast() { patternSeq.pop(); patternRenderSeq(); }
-function patternClear() { patternSeq = []; patternRenderSeq(); }
+function patternAdd(shiftType) {
+  patternSeq.push(shiftType);
+  patternRenderSeq();
+}
+
+function patternRemoveLast() {
+  patternSeq.pop();
+  patternRenderSeq();
+}
+
+function patternClear() {
+  patternSeq = [];
+  patternRenderSeq();
+}
+
 function patternRenderSeq() {
-  document.getElementById('pattern-sequence').innerHTML = patternSeq.map(s => `<span class="seq-item shift-${s}">${s}</span>`).join('');
+  document.getElementById('pattern-sequence').innerHTML = patternSeq.map(item => `<span class="seq-item shift-${item}">${item}</span>`).join('');
 }
 
 function patternModeChange() {
@@ -181,72 +204,60 @@ function patternModeChange() {
   document.getElementById('pattern-month-wrap').classList.toggle('hidden', mode !== 'month');
 }
 
-function patternApply() {
-  if (!currentCal || currentCal.readonly) { toast('No puedes editar este calendario'); return; }
-  if (!patternSeq.length) { toast('Añade turnos a la secuencia'); return; }
+async function patternApply() {
+  if (!currentCal || currentCal.readonly) { toast('No podés editar este calendario'); return; }
+  if (!patternSeq.length) { toast('Añadí turnos a la secuencia'); return; }
+
   const mode = document.querySelector('input[name="pattern-mode"]:checked').value;
-  let startDate, endDate = null;
+  let startDate = '';
+  let endDate = '';
 
   if (mode === 'until') {
-    const startInput = document.getElementById('pattern-start').value;
-    if (!startInput) { toast('Selecciona fecha de inicio'); return; }
-    startDate = startInput;
+    startDate = document.getElementById('pattern-start').value;
     endDate = document.getElementById('pattern-end').value;
-    if (!endDate) { toast('Selecciona fecha fin'); return; }
+    if (!startDate || !endDate) { toast('Elegí inicio y fin'); return; }
   } else {
-    // Month mode: use pattern-start if set, otherwise day 1
+    const month = document.getElementById('pattern-month').value;
+    if (!month) { toast('Elegí un mes'); return; }
     const startInput = document.getElementById('pattern-start').value;
-    const mv = document.getElementById('pattern-month').value;
-    if (!mv) { toast('Selecciona un mes'); return; }
-    const [y, m] = mv.split('-').map(Number);
-    if (startInput && startInput.startsWith(mv)) {
-      startDate = startInput;
-    } else {
-      startDate = `${mv}-01`;
-    }
-    endDate = `${y}-${String(m).padStart(2, '0')}-${new Date(y, m, 0).getDate()}`;
+    const [year, monthNumber] = month.split('-').map(Number);
+    startDate = startInput && startInput.startsWith(month) ? startInput : `${month}-01`;
+    endDate = `${month}-${String(new Date(year, monthNumber, 0).getDate()).padStart(2, '0')}`;
   }
-  currentCal.patterns.push({ sequence: [...patternSeq], startDate, endDate });
-  storeSave(currentCal);
-    scheduleDriveSync();
-  calRender();
-  renderPatternsList();
-  toast('Patrón aplicado ✓');
 
-  // Clear pattern form
-  patternSeq = [];
-  patternRenderSeq();
+  await googleCalendarCreatePattern(patternSeq, startDate, endDate);
+  renderPatternsList();
+  patternClear();
   document.getElementById('pattern-start').value = '';
   document.getElementById('pattern-end').value = '';
   document.getElementById('pattern-month').value = '';
+  toast('Patrón aplicado ✓');
 }
 
 function renderPatternsList() {
   const el = document.getElementById('patterns-list');
   const title = document.getElementById('patterns-saved-title');
-  if (!currentCal || !currentCal.patterns.length) {
+  const patterns = (currentCal && currentCal.patterns) || [];
+  if (!patterns.length) {
     el.innerHTML = '';
-    if (title) title.classList.add('hidden');
+    title.classList.add('hidden');
     return;
   }
-  if (title) title.classList.remove('hidden');
-  el.innerHTML = currentCal.patterns.map((p, i) => `
+  title.classList.remove('hidden');
+  el.innerHTML = patterns.map(pattern => `
     <div class="pattern-item">
       <div>
-        <div class="seq">${p.sequence.map(s => `<span class="seq-item shift-${s}">${s}</span>`).join('')}</div>
-        <small>${p.startDate} → ${p.endDate || '∞'}</small>
+        <div class="seq">${pattern.sequence.map(item => `<span class="seq-item shift-${item}">${escapeHtml(item)}</span>`).join('')}</div>
+        <small>${escapeHtml(pattern.startDate || '')} → ${escapeHtml(pattern.endDate || '∞')}</small>
       </div>
-      ${currentCal.readonly ? '' : `<button class="btn btn-sm btn-danger" onclick="patternDelete(${i})">✕</button>`}
+      ${currentCal.readonly ? '' : `<button class="btn btn-sm btn-danger" onclick="patternDelete('${pattern.patternId}')">✕</button>`}
     </div>
   `).join('');
 }
 
-function patternDelete(idx) {
+async function patternDelete(patternId) {
   if (!currentCal || currentCal.readonly) return;
-  currentCal.patterns.splice(idx, 1);
-  storeSave(currentCal);
-    scheduleDriveSync();
-  calRender();
+  await googleCalendarDeletePattern(patternId);
   renderPatternsList();
   toast('Patrón eliminado');
 }

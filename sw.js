@@ -1,5 +1,5 @@
-const CACHE_NAME = 'turnos-v7';
-const ASSETS = ['./', './index.html', './css/styles.css', './js/store.js', './js/calendar.js', './js/events.js', './js/share.js', './js/gdrive.js', './js/app.js', './manifest.json'];
+const CACHE_NAME = 'turnos-v8';
+const ASSETS = ['./', './index.html', './css/styles.css', './js/store.js', './js/calendar.js', './js/events.js', './js/share.js', './js/gcalendar.js', './js/app.js', './manifest.json'];
 
 function shouldHandleFetch(request) {
   if (!request || request.method !== 'GET') return false;
