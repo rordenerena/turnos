@@ -113,13 +113,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 
 .hidden{display:none!important}
 .hint{font-size:.8rem;color:var(--muted);margin-bottom:8px}
-.app-version{position:fixed;bottom:0;left:0;right:0;text-align:center;font-size:.65rem;color:var(--border);padding:4px 0}
+.app-version{position:fixed;bottom:0;left:0;right:0;text-align:center;font-size:.65rem;color:var(--border);padding:4px 0 calc(4px + env(safe-area-inset-bottom,0px))}
 
 /* Sync indicator */
-#sync-indicator{position:fixed;bottom:88px;right:20px;width:36px;height:36px;z-index:150}
+#sync-indicator{position:fixed;bottom:calc(88px + env(safe-area-inset-bottom,0px));right:20px;width:36px;height:36px;z-index:150}
 
 /* FAB */
-.fab{position:fixed;bottom:28px;right:12px;width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;border:none;font-size:1.4rem;box-shadow:0 3px 8px rgba(0,0,0,.25);cursor:pointer;z-index:140;display:flex;align-items:center;justify-content:center}
+.fab{position:fixed;bottom:calc(28px + env(safe-area-inset-bottom,0px));right:12px;width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;border:none;font-size:1.4rem;box-shadow:0 3px 8px rgba(0,0,0,.25);cursor:pointer;z-index:140;display:flex;align-items:center;justify-content:center}
 .fab:active{transform:scale(.92)}
 
 /* Scanner */
