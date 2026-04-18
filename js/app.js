@@ -32,6 +32,7 @@ function showUpdateToast() {
 }
 
 function switchTab(tab) {
+  localStorage.setItem('turnos_tab', tab);
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === `tab-${tab}`));
   if (tab === 'shared') {
@@ -156,6 +157,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   renderCalSelector();
   calRender();
+
+  // Restore last active tab
+  const savedTab = localStorage.getItem('turnos_tab');
+  if (savedTab) switchTab(savedTab);
 
   // Init Google Drive sync
   gdriveInit();
