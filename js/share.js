@@ -128,10 +128,8 @@ function renderImportedList() {
   }
 
   // Imported calendars
-  html += '<h3 style="margin:12px 0 4px">Calendarios importados</h3>';
-  if (!imported.length) {
-    html += '<p class="hint">No tenés calendarios importados.</p>';
-  } else {
+  if (imported.length) {
+    html += '<h3 style="margin:12px 0 4px">Calendarios importados</h3>';
     html += imported.map(c => `
     <div class="imported-item">
       <div>
