@@ -4,6 +4,47 @@ let currentCal = null;
 let calYear, calMonth;
 let selectedDate = null;
 let patternSeq = [];
+let readonlyBannerRefreshState = { calendarId: null, status: 'idle', resetTimer: null };
+
+function readonlyBannerResetLater(calendarId) {
+  clearTimeout(readonlyBannerRefreshState.resetTimer);
+  readonlyBannerRefreshState.resetTimer = setTimeout(() => {
+    if (readonlyBannerRefreshState.calendarId !== calendarId) return;
+    readonlyBannerRefreshState.status = 'idle';
+    if (currentCal && currentCal.id === calendarId && currentCal.readonly) calRender();
+  }, 1400);
+}
+
+function readonlyBannerUpdateRefreshState(calendarId, status) {
+  readonlyBannerRefreshState.calendarId = calendarId;
+  readonlyBannerRefreshState.status = status;
+  if (status === 'success' || status === 'error') readonlyBannerResetLater(calendarId);
+  if (currentCal && currentCal.id === calendarId && currentCal.readonly) calRender();
+}
+
+function readonlyBannerRefreshMarkup(status) {
+  if (status === 'refreshing') return '<span class="readonly-banner-spinner" aria-hidden="true"></span>';
+  if (status === 'success') return '<span aria-hidden="true">✓</span>';
+  if (status === 'error') return '<span aria-hidden="true">⚠</span>';
+  return '<span aria-hidden="true">🔄</span>';
+}
+
+async function readonlyBannerRefreshCurrent(event) {
+  event?.preventDefault();
+  if (!currentCal || !currentCal.readonly) return;
+  const calendarId = currentCal.id;
+  if (readonlyBannerRefreshState.calendarId === calendarId && readonlyBannerRefreshState.status === 'refreshing') return;
+  try {
+    await shareRefreshImportedAction(calendarId, {
+      silent: true,
+      toastSuccess: false,
+      toastError: true,
+      onStateChange: status => readonlyBannerUpdateRefreshState(calendarId, status),
+    });
+  } catch {
+    // El error visual y el toast ya se manejan en shareRefreshImportedAction.
+  }
+}
 
 function getModalDraftDay(ds) {
   if (typeof modalGetDraft === 'function') return modalGetDraft(ds);
@@ -87,9 +128,21 @@ function calRender() {
   const banner = document.getElementById('readonly-banner');
   const readonly = !!(currentCal && currentCal.readonly);
   if (readonly) {
-    banner.textContent = `👁 ${currentCal.name} (solo lectura)`;
+    const refreshState = readonlyBannerRefreshState.calendarId === currentCal.id ? readonlyBannerRefreshState.status : 'idle';
+    banner.innerHTML = `
+      <span class="readonly-banner-copy">👁 ${escapeHtml(currentCal.name)} (solo lectura)</span>
+      <button
+        type="button"
+        class="btn btn-sm readonly-banner-refresh"
+        data-state="${refreshState}"
+        onclick="readonlyBannerRefreshCurrent(event)"
+        aria-label="Actualizar calendario importado"
+        title="Actualizar calendario importado"
+      >${readonlyBannerRefreshMarkup(refreshState)}</button>
+    `;
     banner.classList.remove('hidden');
   } else {
+    banner.innerHTML = '';
     banner.classList.add('hidden');
   }
   document.querySelectorAll('.tab[data-tab="patterns"],.tab[data-tab="shared"],.tab[data-tab="settings"]').forEach(tab => tab.classList.toggle('hidden', readonly));

@@ -288,6 +288,21 @@ async function shareRefreshImportedCalendar(id, options = {}) {
   return source;
 }
 
+async function shareRefreshImportedAction(id, options = {}) {
+  const { silent = false, toastSuccess = true, toastError = true, onStateChange = null } = options;
+  try {
+    if (typeof onStateChange === 'function') onStateChange('refreshing');
+    const source = await shareRefreshImportedCalendar(id, { silent });
+    if (typeof onStateChange === 'function') onStateChange('success', source);
+    if (toastSuccess) toast('Calendario actualizado ✓');
+    return source;
+  } catch (error) {
+    if (typeof onStateChange === 'function') onStateChange('error', error);
+    if (toastError) toast(`Error al actualizar: ${error.message}`);
+    throw error;
+  }
+}
+
 async function shareImportByUrl(icalUrl) {
   const googleCalendarId = googleCalendarIdFromIcalUrl(icalUrl);
   const id = googleCalendarId
@@ -363,10 +378,9 @@ function renderImportedList() {
 
 async function refreshImported(id) {
   try {
-    await shareRefreshImportedCalendar(id);
-    toast('Calendario actualizado ✓');
-  } catch (error) {
-    toast(`Error al actualizar: ${error.message}`);
+    await shareRefreshImportedAction(id);
+  } catch {
+    // El feedback ya se muestra dentro de shareRefreshImportedAction.
   }
 }
 

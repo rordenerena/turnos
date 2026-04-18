@@ -118,7 +118,14 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 #modal-add-event input{flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:.85rem;background:var(--card);color:var(--text)}
 
 /* Readonly banner */
-.readonly-banner{background:#fff3cd;color:#856404;padding:8px 12px;border-radius:var(--radius);text-align:center;font-size:.85rem;margin-bottom:8px}
+.readonly-banner{background:#fff3cd;color:#856404;padding:8px 12px;border-radius:var(--radius);font-size:.85rem;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px}
+.readonly-banner-copy{min-width:0}
+.readonly-banner-refresh{min-width:34px;min-height:30px;padding:4px 8px;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.55)}
+.readonly-banner-refresh[data-state="refreshing"]{cursor:wait}
+.readonly-banner-refresh[data-state="success"]{color:#1b5e20;border-color:#1b5e20}
+.readonly-banner-refresh[data-state="error"]{color:#b71c1c;border-color:#b71c1c}
+.readonly-banner-spinner{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:readonly-banner-spin .7s linear infinite}
+@keyframes readonly-banner-spin{to{transform:rotate(360deg)}}
 
 /* Toast */
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:var(--radius);font-size:.85rem;z-index:200;transition:opacity .3s}
