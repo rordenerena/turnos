@@ -42,6 +42,7 @@ function switchTab(tab) {
     renderPatternsList();
     const today = new Date();
     document.getElementById('pattern-start').value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    document.getElementById('pattern-end').value = `${today.getFullYear()+1}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
     document.getElementById('pattern-month').value = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
   }
   if (tab === 'settings') {
