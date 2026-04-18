@@ -47,6 +47,9 @@ function calRender() {
     html += '</div>';
   }
   grid.innerHTML = html;
+  const totalCells = startDay + daysInMonth;
+  const rows = Math.ceil(totalCells / 7);
+  grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
 
   // Readonly banner + hide tabs
   const banner = document.getElementById('readonly-banner');

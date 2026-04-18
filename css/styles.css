@@ -11,8 +11,8 @@
     --primary:#5b9bf4;--accent:#66bb6a;
   }
 }
-body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-#app{max-width:500px;margin:0 auto;padding:8px}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh}
+#app{max-width:500px;margin:0 auto;padding:8px;display:flex;flex-direction:column;min-height:100vh;min-height:100dvh}
 
 /* Header */
 #header{display:flex;justify-content:space-between;align-items:center;padding:10px 0;gap:8px}
@@ -37,13 +37,14 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .tab{background:none;border:none;padding:8px 12px;cursor:pointer;font-size:.85rem;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--muted);touch-action:manipulation}
 .tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
 .tab-content{display:none}.tab-content.active{display:block}
+#tab-calendar.active{display:flex;flex-direction:column;flex:1}
 
 /* Calendar grid */
 #cal-nav{display:flex;align-items:center;gap:8px;margin-bottom:8px;justify-content:center}
 #cal-month-label{font-weight:600;font-size:1rem;min-width:150px;text-align:center}
 #cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:.7rem;color:var(--muted);margin-bottom:4px;font-weight:700}
-#cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
-.cal-day{background:var(--card);border-radius:var(--radius);padding:3px;min-height:50px;cursor:pointer;border:1px solid var(--border);position:relative;font-size:.75rem;transition:box-shadow .15s}
+#cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;flex:1}
+.cal-day{background:var(--card);border-radius:var(--radius);padding:3px;cursor:pointer;border:1px solid var(--border);position:relative;font-size:.75rem;transition:box-shadow .15s;overflow:hidden}
 .cal-day:hover{box-shadow:0 2px 8px rgba(0,0,0,.1)}
 .cal-day.empty{background:transparent;border-color:transparent;cursor:default;min-height:0}
 .cal-day.today{border-color:var(--primary);border-width:2px}
