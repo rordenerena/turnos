@@ -6,6 +6,23 @@ const OWNER_META_KEY = 'turnos_owner_meta';
 const AUTH_TOKEN_KEY = 'turnos_google_token';
 const LEGACY_STORE_KEY = 'turnos_calendars';
 
+function storeCleanIdentityValue(value) {
+  return String(value || '').trim();
+}
+
+function storeNormalizeOwnerIdentity(source) {
+  return {
+    ownerName: storeCleanIdentityValue(source?.ownerName),
+    ownerEmail: storeCleanIdentityValue(source?.ownerEmail),
+  };
+}
+
+function storeOwnerIdentityText(source) {
+  const { ownerName, ownerEmail } = storeNormalizeOwnerIdentity(source);
+  if (ownerName && ownerEmail) return `${ownerName} · ${ownerEmail}`;
+  return ownerName || ownerEmail || '';
+}
+
 function uuid() {
   return crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
     const r = Math.random() * 16 | 0;
@@ -65,9 +82,14 @@ function storeGetImportedById(id) {
 function storeSaveImported(source) {
   const imports = storeGetImportedMap();
   const previous = imports[source.id] || {};
+  const identity = storeNormalizeOwnerIdentity({
+    ownerName: source.ownerName || previous.ownerName,
+    ownerEmail: source.ownerEmail || previous.ownerEmail,
+  });
   imports[source.id] = {
     ...previous,
     ...source,
+    ...identity,
     readonly: true,
     updatedAt: new Date().toISOString(),
   };
@@ -86,6 +108,7 @@ function storeClearImports() {
 }
 
 function storeBuildImportedSource(meta) {
+  const identity = storeNormalizeOwnerIdentity(meta);
   return {
     id: meta.id,
     name: meta.name || 'Calendario importado',
@@ -99,6 +122,7 @@ function storeBuildImportedSource(meta) {
     patterns: [],
     lastSyncedAt: meta.lastSyncedAt || null,
     counts: meta.counts || { shifts: 0, events: 0 },
+    ...identity,
   };
 }
 

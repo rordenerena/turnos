@@ -64,7 +64,8 @@ function switchTab(tab) {
   }
   if (tab === 'settings') {
     document.getElementById('theme-select').value = localStorage.getItem('turnos_theme') || 'auto';
-    document.getElementById('google-user-name').textContent = googleProfile ? `👤 ${googleProfile.name || googleProfile.email}` : 'Sin sesión';
+    const sessionIdentity = googleProfile ? storeOwnerIdentityText({ ownerName: googleProfile.name, ownerEmail: googleProfile.email }) : '';
+    document.getElementById('google-user-name').textContent = sessionIdentity ? `👤 ${sessionIdentity}` : 'Sin sesión';
     document.getElementById('owner-feed-url').textContent = googleOwnerCalendar?.publicIcalUrl || 'Pendiente';
   }
 }

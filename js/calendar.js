@@ -129,8 +129,9 @@ function calRender() {
   const readonly = !!(currentCal && currentCal.readonly);
   if (readonly) {
     const refreshState = readonlyBannerRefreshState.calendarId === currentCal.id ? readonlyBannerRefreshState.status : 'idle';
+    const ownerIdentity = storeOwnerIdentityText(currentCal);
     banner.innerHTML = `
-      <span class="readonly-banner-copy">👁 ${escapeHtml(currentCal.name)} (solo lectura)</span>
+      <span class="readonly-banner-copy">👁 ${escapeHtml(currentCal.name)} (solo lectura)${ownerIdentity ? `<span class="readonly-banner-owner"> · Propietario: ${escapeHtml(ownerIdentity)}</span>` : ''}</span>
       <button
         type="button"
         class="btn btn-sm readonly-banner-refresh"
