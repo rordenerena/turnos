@@ -110,6 +110,24 @@ function dayClick(ds) {
   modalOpen(ds);
 }
 
+/* Swipe navigation */
+let _touchStartX = 0;
+let _touchStartY = 0;
+document.addEventListener('DOMContentLoaded', () => {
+  const grid = document.getElementById('cal-grid');
+  grid.addEventListener('touchstart', e => {
+    _touchStartX = e.touches[0].clientX;
+    _touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  grid.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - _touchStartX;
+    const dy = e.changedTouches[0].clientY - _touchStartY;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx > 0) calPrev(); else calNext();
+    }
+  }, { passive: true });
+});
+
 function setShift(shift) {
   if (!currentCal || currentCal.readonly) return;
   if (!currentCal.shifts) currentCal.shifts = {};
