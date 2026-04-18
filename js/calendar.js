@@ -88,6 +88,7 @@ function calRender() {
     banner.classList.add('hidden');
   }
   document.querySelectorAll('.tab[data-tab="patterns"],.tab[data-tab="shared"]').forEach(tab => tab.classList.toggle('hidden', readonly));
+  if (readonly && typeof ensureWritableTabVisibility === 'function') ensureWritableTabVisibility();
 }
 
 function sortShifts(a, b) {

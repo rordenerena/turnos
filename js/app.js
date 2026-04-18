@@ -68,6 +68,16 @@ function switchTab(tab) {
   }
 }
 
+function currentVisibleTab() {
+  return document.querySelector('.tab.active')?.dataset.tab || localStorage.getItem('turnos_tab') || 'calendar';
+}
+
+function ensureWritableTabVisibility() {
+  if (!currentCal || !currentCal.readonly) return;
+  const tab = currentVisibleTab();
+  if (tab === 'patterns' || tab === 'shared') switchTab('calendar');
+}
+
 function renderCalSelector() {
   const sel = document.getElementById('cal-selector');
   const items = [];
@@ -83,6 +93,7 @@ async function selectCalendar(id) {
   if (googleOwnerCalendar && id === googleOwnerCalendar.id) {
     currentCal = googleOwnerCalendar;
     storeSetActive(id);
+    ensureWritableTabVisibility();
     renderCalSelector();
     calRender();
     renderPatternsList();
@@ -93,10 +104,12 @@ async function selectCalendar(id) {
   if (!importedMeta) return;
   currentCal = storeBuildImportedSource(importedMeta);
   storeSetActive(id);
+  ensureWritableTabVisibility();
   renderCalSelector();
   calRender();
   try {
     currentCal = await shareRefreshImportedCalendar(id, { silent: true });
+    ensureWritableTabVisibility();
     renderCalSelector();
     calRender();
   } catch (error) {
@@ -151,20 +164,15 @@ async function appLogin() {
 async function bootstrapAuthorizedApp() {
   googleCalendarShowAuth(false);
   currentCal = await googleCalendarBootstrap();
+  storeSetActive(currentCal.id);
   renderCalSelector();
   calRender();
   renderPatternsList();
   renderImportedList();
 
-  const activeId = storeGetActive();
-  if (activeId && activeId !== currentCal.id) {
-    await selectCalendar(activeId);
-  } else {
-    storeSetActive(currentCal.id);
-  }
-
   const savedTab = localStorage.getItem('turnos_tab');
   if (savedTab) switchTab(savedTab);
+  ensureWritableTabVisibility();
 
   try {
     await shareCheckUrl();
