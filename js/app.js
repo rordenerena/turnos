@@ -119,6 +119,39 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+/* QR Scanner */
+let _scanner = null;
+function scanOpen() {
+  document.getElementById('scan-overlay').classList.remove('hidden');
+  _scanner = new Html5Qrcode('scan-reader');
+  _scanner.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: { width: 250, height: 250 } },
+    (text) => {
+      scanClose();
+      // Process the scanned URL
+      try {
+        const url = new URL(text);
+        if (url.hash) {
+          location.hash = url.hash;
+          shareCheckUrl();
+          renderCalSelector();
+          calRender();
+        }
+      } catch {
+        toast('QR no válido');
+      }
+    }
+  ).catch(() => toast('No se pudo acceder a la cámara'));
+}
+
+function scanClose(e) {
+  if (e && e.target && e.target.id !== 'scan-overlay') return;
+  document.getElementById('scan-overlay').classList.add('hidden');
+  if (_scanner) _scanner.stop().catch(() => {});
+  _scanner = null;
+}
+
 function updateSW() {
   if (!('serviceWorker' in navigator)) { toast('Service Worker no disponible'); return; }
   navigator.serviceWorker.getRegistrations().then(regs => {

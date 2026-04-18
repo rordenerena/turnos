@@ -9,6 +9,7 @@
   <link rel="icon" href="icons/icon-192.svg" type="image/svg+xml">
   <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.2.2/build/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://apis.google.com/js/api.js" async defer></script>
 </head>
@@ -164,6 +165,18 @@
       </div>
     </div>
 
+    <button id="fab-scan" class="fab" onclick="scanOpen()">📷</button>
+
+    <div id="scan-overlay" class="hidden" onclick="scanClose(event)">
+      <div id="scan-modal">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <h3>Escanear QR</h3>
+          <button class="btn btn-sm" onclick="scanClose()">✕</button>
+        </div>
+        <div id="scan-reader"></div>
+      </div>
+    </div>
+
     <div id="sync-indicator" class="hidden">
       <svg viewBox="0 0 36 36" class="sync-ring">
         <circle cx="18" cy="18" r="15.9" class="sync-ring-bg"/>
@@ -172,7 +185,7 @@
       <span id="sync-icon">⏳</span>
     </div>
     <div id="toast" class="hidden"></div>
-    <p class="app-version">v18/04/2026 01:59</p>
+    <p class="app-version">v18/04/2026 02:01</p>
   </div>
 
   <script src="js/store.js"></script>
