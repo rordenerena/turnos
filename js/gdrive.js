@@ -264,7 +264,7 @@ async function gdriveReadPublic(fileId) {
 /* Debounced Drive upload with visual countdown */
 let _driveTimer = null;
 let _countdownInterval = null;
-const SYNC_DELAY = 5000;
+const SYNC_DELAY = 2500;
 
 function scheduleDriveSync() {
   if (!gdriveToken || !currentCal || currentCal.readonly) return;
