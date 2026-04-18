@@ -271,18 +271,10 @@ async function gdriveUploadAndShare(cal) {
   return fileId;
 }
 
-/* Read a public Drive file using direct download URL */
+/* Read a public Drive file - currently disabled due to CORS */
 async function gdriveReadPublic(fileId) {
-  // Use direct download link - works for publicly shared files
-  const url = `https://drive.google.com/uc?id=${fileId}&export=download`;
-  const resp = await fetch(url);
-  if (!resp.ok) {
-    if (resp.status === 404) {
-      throw new Error('Archivo no encontrado en Drive');
-    }
-    throw new Error(`Error ${resp.status}`);
-  }
-  return resp.json();
+  // CORS blocks all Drive API access from browser
+  throw new Error('Sincronización de calendarios importados temporalmente deshabilitada. Volvé a importar el QR.');
 }
 
 /* Debounced Drive upload with visual countdown */
