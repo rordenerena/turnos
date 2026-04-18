@@ -1,5 +1,19 @@
 /* app.js — Bootstrap, tab switching, calendar selector */
 
+/* Header tap — 5 taps to show danger section */
+let _headerTaps = 0;
+let _headerTimer = null;
+function headerTap() {
+  _headerTaps++;
+  clearTimeout(_headerTimer);
+  _headerTimer = setTimeout(() => _headerTaps = 0, 2000);
+  if (_headerTaps >= 5) {
+    _headerTaps = 0;
+    const el = document.getElementById('danger-section');
+    if (el) { el.classList.toggle('hidden'); toast(el.classList.contains('hidden') ? 'Modo desarrollador desactivado' : '⚠️ Modo desarrollador activado'); }
+  }
+}
+
 /* Theme */
 function setTheme(mode) {
   localStorage.setItem('turnos_theme', mode);

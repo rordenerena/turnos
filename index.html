@@ -26,7 +26,7 @@
 
   <div id="app">
     <header id="header">
-      <h1>📅 Turnos</h1>
+      <h1 onclick="headerTap()">📅 Turnos</h1>
       <select id="cal-selector" onchange="selectCalendar(this.value)"></select>
     </header>
 
@@ -136,7 +136,7 @@
           <button class="btn btn-sm btn-danger" onclick="gdriveLogout()">Desconectar</button>
         </div>
       </div>
-      <div class="card">
+      <div class="card hidden" id="danger-section">
         <h3>Peligro</h3>
         <button class="btn btn-danger" onclick="deleteEverything()">🗑️ Borrar TODO (local + Drive)</button>
       </div>
