@@ -118,18 +118,38 @@ async function gdriveRestoreCalendars() {
       try {
         const data = await gdriveReadPublic(file.id);
         if (!data || !data.id) continue;
+        data.driveFileId = file.id;
         const local = storeGet(data.id);
-        if (!local || (data.updatedAt && data.updatedAt > (local.updatedAt || ''))) {
-          data.driveFileId = file.id;
-          if (!local) data.readonly = false; // own calendar restored
-          storeSave(local ? { ...local, ...data, readonly: local.readonly } : data);
+        if (!local) {
+          // New calendar from Drive — check if there's an empty local with same name to replace
+          const mine = storeGetMine();
+          const emptyDupe = mine.find(c => c.name === data.name && !c.driveFileId && Object.keys(c.shifts || {}).length === 0 && (c.patterns || []).length === 0);
+          if (emptyDupe) {
+            storeDelete(emptyDupe.id);
+          }
+          data.readonly = false;
+          storeSave(data);
+          restored++;
+        } else if (data.updatedAt && data.updatedAt > (local.updatedAt || '')) {
+          storeSave({ ...local, ...data, readonly: local.readonly });
           restored++;
         }
       } catch {}
     }
     if (restored) {
+      // If there are still duplicates with same name, rename the one without driveFileId
       const mine = storeGetMine();
-      if (mine.length) { currentCal = mine[0]; storeSetActive(currentCal.id); }
+      const names = {};
+      for (const c of mine) {
+        if (names[c.name]) {
+          const toRename = c.driveFileId ? names[c.name] : c;
+          toRename.name = toRename.name + ' (local)';
+          storeSave(toRename);
+        }
+        names[c.name] = c;
+      }
+      currentCal = storeGet(storeGetActive()) || mine[0];
+      if (currentCal) storeSetActive(currentCal.id);
       renderCalSelector();
       calRender();
       toast(`${restored} calendario(s) restaurado(s) desde Drive ✓`);
