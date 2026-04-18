@@ -28,7 +28,7 @@ function gdriveRestoreSession() {
     gdriveToken = parsed.access_token;
     gapi.client.setToken({ access_token: gdriveToken });
     gdriveUpdateUI(true);
-    gdriveRestoreCalendars();
+    setTimeout(gdriveRestoreCalendars, 3000);
   } else {
     localStorage.removeItem('turnos_gdrive_token');
   }
