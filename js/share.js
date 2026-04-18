@@ -329,11 +329,12 @@ function renderImportedList() {
   if (googleOwnerCalendar) {
     html += `
       <div class="imported-item">
-        <div>
+        <div class="imp-body">
           <div class="imp-name">✏️ Mi calendario</div>
-          <div class="imp-date">Feed público: ${escapeHtml(googleOwnerCalendar.publicIcalUrl)}</div>
+          <div class="imp-date">Feed público:</div>
+          <div class="imp-url">${escapeHtml(googleOwnerCalendar.publicIcalUrl)}</div>
         </div>
-        <div style="display:flex;gap:4px">
+        <div class="imp-actions" style="display:flex;gap:4px">
           <button class="btn btn-sm btn-primary" onclick="selectCalendar('${googleOwnerCalendar.id}');switchTab('calendar')">Ver</button>
         </div>
       </div>
@@ -344,11 +345,11 @@ function renderImportedList() {
     html += '<h3 style="margin:12px 0 4px">Calendarios importados</h3>';
     html += imports.map(meta => `
       <div class="imported-item">
-        <div>
+        <div class="imp-body">
           <div class="imp-name">👁 ${escapeHtml(meta.name || 'Calendario importado')}${calItemCount(meta)}</div>
           <div class="imp-date">Actualizado: ${meta.lastSyncedAt ? new Date(meta.lastSyncedAt).toLocaleString('es') : 'pendiente'}</div>
         </div>
-        <div style="display:flex;gap:4px">
+        <div class="imp-actions" style="display:flex;gap:4px">
           <button class="btn btn-sm" onclick="refreshImported('${meta.id}')">🔄</button>
           <button class="btn btn-sm btn-primary" onclick="selectCalendar('${meta.id}');switchTab('calendar')">Ver</button>
           <button class="btn btn-sm btn-danger" onclick="removeImported('${meta.id}')">✕</button>

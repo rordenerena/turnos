@@ -46,6 +46,7 @@ function showUpdateToast() {
 }
 
 function switchTab(tab) {
+  if (currentCal && currentCal.readonly && ['patterns', 'shared', 'settings'].includes(tab)) tab = 'calendar';
   localStorage.setItem('turnos_tab', tab);
   document.querySelectorAll('.tab').forEach(item => item.classList.toggle('active', item.dataset.tab === tab));
   document.querySelectorAll('.tab-content').forEach(item => item.classList.toggle('active', item.id === `tab-${tab}`));
@@ -75,7 +76,19 @@ function currentVisibleTab() {
 function ensureWritableTabVisibility() {
   if (!currentCal || !currentCal.readonly) return;
   const tab = currentVisibleTab();
-  if (tab === 'patterns' || tab === 'shared') switchTab('calendar');
+  if (tab === 'patterns' || tab === 'shared' || tab === 'settings') switchTab('calendar');
+}
+
+async function restoreActiveSource(savedActiveId) {
+  if (!savedActiveId || !googleOwnerCalendar || savedActiveId === googleOwnerCalendar.id) return false;
+  if (!storeGetImportedById(savedActiveId)) return false;
+  try {
+    await selectCalendar(savedActiveId);
+    return currentCal && currentCal.id === savedActiveId;
+  } catch (error) {
+    console.warn('No se pudo restaurar el calendario activo', error);
+    return false;
+  }
 }
 
 function renderCalSelector() {
@@ -163,6 +176,8 @@ async function appLogin() {
 
 async function bootstrapAuthorizedApp() {
   googleCalendarShowAuth(false);
+  const savedActiveId = storeGetActive();
+  const hasUrlImport = (location.hash || '').startsWith('#ical=');
   currentCal = await googleCalendarBootstrap();
   storeSetActive(currentCal.id);
   renderCalSelector();
@@ -170,14 +185,21 @@ async function bootstrapAuthorizedApp() {
   renderPatternsList();
   renderImportedList();
 
+  if (!hasUrlImport) {
+    const restored = await restoreActiveSource(savedActiveId);
+    if (!restored) storeSetActive(currentCal.id);
+  }
+
   const savedTab = localStorage.getItem('turnos_tab');
   if (savedTab) switchTab(savedTab);
   ensureWritableTabVisibility();
 
-  try {
-    await shareCheckUrl();
-  } catch (error) {
-    toast(`No se pudo importar el iCal: ${error.message}`);
+  if (hasUrlImport) {
+    try {
+      await shareCheckUrl();
+    } catch (error) {
+      toast(`No se pudo importar el iCal: ${error.message}`);
+    }
   }
 }
 

@@ -92,7 +92,7 @@ function calRender() {
   } else {
     banner.classList.add('hidden');
   }
-  document.querySelectorAll('.tab[data-tab="patterns"],.tab[data-tab="shared"]').forEach(tab => tab.classList.toggle('hidden', readonly));
+  document.querySelectorAll('.tab[data-tab="patterns"],.tab[data-tab="shared"],.tab[data-tab="settings"]').forEach(tab => tab.classList.toggle('hidden', readonly));
   if (readonly && typeof ensureWritableTabVisibility === 'function') ensureWritableTabVisibility();
 }
 
