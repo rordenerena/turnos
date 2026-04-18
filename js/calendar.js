@@ -8,6 +8,7 @@ function calInit() {
   const now = new Date();
   calYear = now.getFullYear();
   calMonth = now.getMonth();
+  calInitSwipe();
 }
 
 function calPrev() { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } calRender(); }
@@ -113,8 +114,9 @@ function dayClick(ds) {
 /* Swipe navigation */
 let _touchStartX = 0;
 let _touchStartY = 0;
-document.addEventListener('DOMContentLoaded', () => {
+function calInitSwipe() {
   const grid = document.getElementById('cal-grid');
+  if (!grid) return;
   grid.addEventListener('touchstart', e => {
     _touchStartX = e.touches[0].clientX;
     _touchStartY = e.touches[0].clientY;
@@ -126,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (dx > 0) calPrev(); else calNext();
     }
   }, { passive: true });
-});
+}
 
 function setShift(shift) {
   if (!currentCal || currentCal.readonly) return;
