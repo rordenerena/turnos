@@ -1,5 +1,20 @@
 /* app.js — Bootstrap, tab switching, calendar selector */
 
+/* Theme */
+function setTheme(mode) {
+  localStorage.setItem('turnos_theme', mode);
+  applyTheme(mode);
+}
+
+function applyTheme(mode) {
+  if (mode === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  else if (mode === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  else document.documentElement.removeAttribute('data-theme');
+}
+
+// Apply saved theme immediately
+applyTheme(localStorage.getItem('turnos_theme') || 'auto');
+
 function toast(msg) {
   const el = document.getElementById('toast');
   el.innerHTML = msg;
@@ -31,6 +46,7 @@ function switchTab(tab) {
   }
   if (tab === 'settings') {
     document.getElementById('my-cal-name').value = currentCal && !currentCal.readonly ? currentCal.name : '';
+    document.getElementById('theme-select').value = localStorage.getItem('turnos_theme') || 'auto';
     gdriveUpdateUI(!!gdriveToken);
   }
 }
