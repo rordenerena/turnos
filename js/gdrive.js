@@ -142,8 +142,31 @@ async function gdriveRestoreCalendars() {
 }
 
 /* Upload calendar to Drive and make it public. Returns fileId. */
+/* Get or create "Turnos" folder in Drive */
+let _driveFolderId = null;
+async function gdriveGetFolder() {
+  if (_driveFolderId) return _driveFolderId;
+  const resp = await gapi.client.drive.files.list({
+    q: "name='Turnos' and mimeType='application/vnd.google-apps.folder' and trashed=false",
+    fields: 'files(id)',
+    spaces: 'drive',
+  });
+  if (resp.result.files && resp.result.files.length) {
+    _driveFolderId = resp.result.files[0].id;
+    return _driveFolderId;
+  }
+  // Create folder
+  const create = await gapi.client.drive.files.create({
+    resource: { name: 'Turnos', mimeType: 'application/vnd.google-apps.folder' },
+    fields: 'id',
+  });
+  _driveFolderId = create.result.id;
+  return _driveFolderId;
+}
+
 async function gdriveUploadAndShare(cal) {
   if (!gdriveToken) throw new Error('No conectado a Drive');
+  const folderId = await gdriveGetFolder();
   const payload = { id: cal.id, name: cal.name, shifts: cal.shifts, events: cal.events, patterns: cal.patterns, updatedAt: cal.updatedAt };
   const fileName = `turnos-${cal.id}.json`;
   let fileId = cal.driveFileId || null;
@@ -165,9 +188,10 @@ async function gdriveUploadAndShare(cal) {
     });
     if (resp.result.files && resp.result.files.length) {
       fileId = resp.result.files[0].id;
-      // Trash duplicates
       for (let i = 1; i < resp.result.files.length; i++) {
-        gapi.client.drive.files.update({ fileId: resp.result.files[i].id, resource: { trashed: true } }).catch(() => {});
+        fetch(`https://www.googleapis.com/drive/v3/files/${resp.result.files[i].id}`, {
+          method: 'DELETE', headers: { Authorization: `Bearer ${gdriveToken}` },
+        }).catch(() => {});
       }
     }
   }
@@ -179,8 +203,7 @@ async function gdriveUploadAndShare(cal) {
       body: JSON.stringify(payload),
     });
   } else {
-    // Create
-    const metadata = { name: fileName, mimeType: 'application/json' };
+    const metadata = { name: fileName, mimeType: 'application/json', parents: [folderId] };
     const form = new FormData();
     form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
     form.append('file', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
@@ -191,7 +214,6 @@ async function gdriveUploadAndShare(cal) {
     });
     fileId = (await resp.json()).id;
 
-    // Make public
     await gapi.client.drive.permissions.create({
       fileId: fileId,
       resource: { role: 'reader', type: 'anyone' },
