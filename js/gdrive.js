@@ -73,21 +73,18 @@ function gdriveLogout() {
 
 function gdriveUpdateUI(loggedIn) {
   const btn = document.getElementById('btn-gdrive');
-  const disc = document.getElementById('btn-gdrive-disconnect');
-  const sync = document.getElementById('btn-gdrive-sync');
+  const actions = document.getElementById('gdrive-actions');
   if (!btn) return;
   if (loggedIn) {
     btn.textContent = '✅ Conectado a Google Drive';
     btn.disabled = true;
     btn.onclick = null;
-    if (disc) disc.classList.remove('hidden');
-    if (sync) sync.classList.remove('hidden');
+    if (actions) actions.classList.remove('hidden');
   } else {
     btn.textContent = '🔒 Conectar Google Drive';
     btn.disabled = false;
     btn.onclick = gdriveLogin;
-    if (disc) disc.classList.add('hidden');
-    if (sync) sync.classList.add('hidden');
+    if (actions) actions.classList.add('hidden');
   }
 }
 
