@@ -271,18 +271,22 @@ async function gdriveUploadAndShare(cal) {
   return fileId;
 }
 
-/* Read a public Drive file — always use API key for public files (anyone with link) */
+/* Read a public Drive file using gapi client */
 async function gdriveReadPublic(fileId) {
-  console.log('Reading public file:', fileId);
-  const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=AIzaSyDQ0i7vJNDF9YxF01Xv7xqmmaJReFwvocY`;
-  const resp = await fetch(url);
-  console.log('Response status:', resp.status);
-  if (!resp.ok) {
-    const err = await resp.text();
-    console.log('Error response:', err);
-    throw new Error(`Drive ${resp.status}: ${err.substring(0, 100)}`);
+  if (!gdriveReady) {
+    // Fallback for when gapi not ready - retry after delay
+    await new Promise(r => setTimeout(r, 1000));
   }
-  return resp.json();
+  try {
+    const resp = await gapi.client.drive.files.get({
+      fileId: fileId,
+      alt: 'media',
+    });
+    return resp.result;
+  } catch (e) {
+    console.warn('gapi read failed:', e.message);
+    throw e;
+  }
 }
 
 /* Debounced Drive upload with visual countdown */
@@ -331,15 +335,11 @@ function scheduleDriveSync() {
 async function gdriveFetchImported() {
   if (!gdriveToken) return;
   const imported = storeGetImported();
-  console.log('Checking', imported.length, 'imported calendars');
   for (const cal of imported) {
-    console.log('Checking imported:', cal.name, 'driveFileId:', cal.driveFileId);
     if (!cal.driveFileId) continue;
     try {
       const data = await gdriveReadPublic(cal.driveFileId);
-      console.log('Got data for', cal.name, 'updatedAt:', data?.updatedAt, 'local:', cal.updatedAt);
       if (data && data.updatedAt && data.updatedAt > (cal.updatedAt || '')) {
-        console.log('Updating calendar', cal.name);
         data.driveFileId = cal.driveFileId;
         const result = storeImportCalendar(data);
         if (currentCal && currentCal.id === cal.id) {
