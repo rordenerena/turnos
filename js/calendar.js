@@ -220,7 +220,13 @@ function patternApply() {
 
 function renderPatternsList() {
   const el = document.getElementById('patterns-list');
-  if (!currentCal || !currentCal.patterns.length) { el.innerHTML = '<p class="hint">Sin patrones.</p>'; return; }
+  const title = document.getElementById('patterns-saved-title');
+  if (!currentCal || !currentCal.patterns.length) {
+    el.innerHTML = '';
+    if (title) title.classList.add('hidden');
+    return;
+  }
+  if (title) title.classList.remove('hidden');
   el.innerHTML = currentCal.patterns.map((p, i) => `
     <div class="pattern-item">
       <div>
