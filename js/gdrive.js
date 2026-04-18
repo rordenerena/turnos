@@ -271,22 +271,18 @@ async function gdriveUploadAndShare(cal) {
   return fileId;
 }
 
-/* Read a public Drive file using gapi client */
+/* Read a public Drive file using direct download URL */
 async function gdriveReadPublic(fileId) {
-  if (!gdriveReady) {
-    // Fallback for when gapi not ready - retry after delay
-    await new Promise(r => setTimeout(r, 1000));
+  // Use direct download link - works for publicly shared files
+  const url = `https://drive.google.com/uc?id=${fileId}&export=download`;
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    if (resp.status === 404) {
+      throw new Error('Archivo no encontrado en Drive');
+    }
+    throw new Error(`Error ${resp.status}`);
   }
-  try {
-    const resp = await gapi.client.drive.files.get({
-      fileId: fileId,
-      alt: 'media',
-    });
-    return resp.result;
-  } catch (e) {
-    console.warn('gapi read failed:', e.message);
-    throw e;
-  }
+  return resp.json();
 }
 
 /* Debounced Drive upload with visual countdown */
