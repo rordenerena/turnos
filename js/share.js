@@ -96,12 +96,35 @@ function shareCheckUrl() {
 
 function renderImportedList() {
   const el = document.getElementById('imported-list');
+  const mine = storeGetMine();
   const imported = storeGetImported();
-  if (!imported.length) { el.innerHTML = '<p class="hint">No tenés calendarios importados.</p>'; return; }
-  el.innerHTML = imported.map(c => `
+  let html = '';
+
+  // Own calendars
+  if (mine.length) {
+    html += '<h3 style="margin:8px 0 4px">Mis calendarios</h3>';
+    html += mine.map(c => `
     <div class="imported-item">
       <div>
-        <div class="imp-name">📅 ${c.name}</div>
+        <div class="imp-name">✏️ ${c.name}</div>
+        <div class="imp-date">Actualizado: ${new Date(c.updatedAt).toLocaleString('es')}</div>
+      </div>
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-sm btn-primary" onclick="selectCalendar('${c.id}');switchTab('calendar')">Ver</button>
+        ${mine.length > 1 ? `<button class="btn btn-sm btn-danger" onclick="removeOwn('${c.id}')">✕</button>` : ''}
+      </div>
+    </div>`).join('');
+  }
+
+  // Imported calendars
+  html += '<h3 style="margin:12px 0 4px">Calendarios importados</h3>';
+  if (!imported.length) {
+    html += '<p class="hint">No tenés calendarios importados.</p>';
+  } else {
+    html += imported.map(c => `
+    <div class="imported-item">
+      <div>
+        <div class="imp-name">👁 ${c.name}</div>
         <div class="imp-date">Actualizado: ${new Date(c.updatedAt).toLocaleString('es')}</div>
       </div>
       <div style="display:flex;gap:4px">
@@ -109,8 +132,30 @@ function renderImportedList() {
         <button class="btn btn-sm btn-primary" onclick="selectCalendar('${c.id}');switchTab('calendar')">Ver</button>
         <button class="btn btn-sm btn-danger" onclick="removeImported('${c.id}')">✕</button>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
+  }
+
+  el.innerHTML = html;
+}
+
+function removeOwn(id) {
+  const mine = storeGetMine();
+  if (mine.length <= 1) { toast('No podés eliminar el último calendario'); return; }
+  if (!confirm('¿Eliminar este calendario?')) return;
+  const cal = storeGet(id);
+  if (gdriveToken && cal && cal.driveFileId) {
+    fetch(`https://www.googleapis.com/drive/v3/files/${cal.driveFileId}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${gdriveToken}` },
+    }).catch(() => {});
+  }
+  storeDelete(id);
+  if (currentCal && currentCal.id === id) {
+    currentCal = storeGetMine()[0];
+    storeSetActive(currentCal.id);
+  }
+  renderImportedList();
+  renderCalSelector();
+  toast('Calendario eliminado');
 }
 
 async function refreshFromDrive(calId) {
