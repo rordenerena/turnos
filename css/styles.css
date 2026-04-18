@@ -94,7 +94,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .imported-item .imp-owner{font-size:.75rem;color:var(--muted);margin-top:2px}
 .imported-item .imp-date{font-size:.7rem;color:var(--muted)}
 .imported-item .imp-url{font-size:.7rem;color:var(--muted);overflow-wrap:anywhere;word-break:break-word;white-space:normal;line-height:1.4;margin-top:2px}
-.imported-item .imp-actions{flex-shrink:0;align-self:center}
+.imported-item .imp-actions{flex-shrink:0;align-self:center;display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
 
 /* Modal */
 #modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
@@ -122,6 +122,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .readonly-banner{background:#fff3cd;color:#856404;padding:8px 12px;border-radius:var(--radius);font-size:.85rem;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px}
 .readonly-banner-copy{min-width:0}
 .readonly-banner-owner{font-weight:500}
+.readonly-banner-actions{display:inline-flex;align-items:center;gap:6px;flex-shrink:0}
 .readonly-banner-refresh{min-width:34px;min-height:30px;padding:4px 8px;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.55)}
 .readonly-banner-refresh[data-state="refreshing"]{cursor:wait}
 .readonly-banner-refresh[data-state="success"]{color:#1b5e20;border-color:#1b5e20}

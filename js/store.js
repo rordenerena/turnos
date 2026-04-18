@@ -29,7 +29,11 @@ function storeOwnerEmailNickname(source) {
   return ownerEmail.split('@')[0] || ownerEmail;
 }
 
-function storeImportedCalendarName(source) {
+function storeCleanImportedAlias(value) {
+  return String(value || '').trim();
+}
+
+function storeImportedCalendarAutoName(source) {
   const rawName = storeCleanIdentityValue(source?.name);
   if (rawName && rawName !== 'Calendario importado') return rawName;
 
@@ -40,6 +44,17 @@ function storeImportedCalendarName(source) {
   if (nickname) return `Calendario de ${nickname}`;
 
   return 'Calendario importado';
+}
+
+function storeImportedCalendarName(source) {
+  const aliasName = storeCleanImportedAlias(source?.aliasName);
+  return aliasName || storeImportedCalendarAutoName(source);
+}
+
+function storeNormalizeImportedAlias(aliasName, source) {
+  const cleanAlias = storeCleanImportedAlias(aliasName);
+  if (!cleanAlias) return '';
+  return cleanAlias === storeImportedCalendarAutoName(source) ? '' : cleanAlias;
 }
 
 function uuid() {
@@ -105,15 +120,28 @@ function storeSaveImported(source) {
     ownerName: source.ownerName || previous.ownerName,
     ownerEmail: source.ownerEmail || previous.ownerEmail,
   });
+  const aliasName = source.aliasName === undefined
+    ? storeCleanImportedAlias(previous.aliasName)
+    : storeNormalizeImportedAlias(source.aliasName, { ...previous, ...source, ...identity });
   imports[source.id] = {
     ...previous,
     ...source,
     ...identity,
+    aliasName,
     readonly: true,
     updatedAt: new Date().toISOString(),
   };
   storeSaveImportedMap(imports);
   return imports[source.id];
+}
+
+function storeSaveImportedAlias(id, aliasName) {
+  const existing = storeGetImportedById(id);
+  if (!existing) return null;
+  return storeSaveImported({
+    ...existing,
+    aliasName: storeNormalizeImportedAlias(aliasName, existing),
+  });
 }
 
 function storeDeleteImported(id) {
@@ -128,9 +156,11 @@ function storeClearImports() {
 
 function storeBuildImportedSource(meta) {
   const identity = storeNormalizeOwnerIdentity(meta);
+  const aliasName = storeCleanImportedAlias(meta?.aliasName);
   return {
     id: meta.id,
     name: storeImportedCalendarName({ ...meta, ...identity }),
+    aliasName,
     readonly: true,
     sourceType: meta.sourceType || 'ical',
     icalUrl: meta.icalUrl,

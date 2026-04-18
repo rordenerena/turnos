@@ -132,14 +132,23 @@ function calRender() {
     const ownerIdentity = storeOwnerIdentityText(currentCal);
     banner.innerHTML = `
       <span class="readonly-banner-copy">👁 ${escapeHtml(currentCal.name)} (solo lectura)${ownerIdentity ? `<span class="readonly-banner-owner"> · Propietario: ${escapeHtml(ownerIdentity)}</span>` : ''}</span>
-      <button
-        type="button"
-        class="btn btn-sm readonly-banner-refresh"
-        data-state="${refreshState}"
-        onclick="readonlyBannerRefreshCurrent(event)"
-        aria-label="Actualizar calendario importado"
-        title="Actualizar calendario importado"
-      >${readonlyBannerRefreshMarkup(refreshState)}</button>
+      <span class="readonly-banner-actions">
+        <button
+          type="button"
+          class="btn btn-sm readonly-banner-refresh"
+          onclick="readonlyBannerRenameCurrent(event)"
+          aria-label="Renombrar calendario importado"
+          title="Renombrar calendario importado"
+        >✏️</button>
+        <button
+          type="button"
+          class="btn btn-sm readonly-banner-refresh"
+          data-state="${refreshState}"
+          onclick="readonlyBannerRefreshCurrent(event)"
+          aria-label="Actualizar calendario importado"
+          title="Actualizar calendario importado"
+        >${readonlyBannerRefreshMarkup(refreshState)}</button>
+      </span>
     `;
     banner.classList.remove('hidden');
   } else {

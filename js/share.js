@@ -174,6 +174,7 @@ function icalBuildSource(meta, text) {
   const parsed = icalParse(text);
   const range = getVisibleWindowRange();
   const identity = storeNormalizeOwnerIdentity(meta);
+  const aliasName = storeCleanImportedAlias(meta?.aliasName);
   const cancellations = new Set();
   const overrides = [];
   const recurring = [];
@@ -224,7 +225,8 @@ function icalBuildSource(meta, text) {
 
   return {
     id: meta.id,
-    name: storeImportedCalendarName({ ...meta, ...identity, name: parsed.name || meta.name || '' }),
+    name: storeImportedCalendarAutoName({ ...meta, ...identity, name: parsed.name || meta.name || '' }),
+    aliasName,
     readonly: true,
     sourceType: 'ical',
     googleCalendarId: meta.googleCalendarId || googleCalendarIdFromIcalUrl(meta.icalUrl),
@@ -244,6 +246,7 @@ function icalBuildSource(meta, text) {
 
 function shareBuildGoogleSource(meta, items) {
   const identity = storeNormalizeOwnerIdentity(meta);
+  const aliasName = storeCleanImportedAlias(meta?.aliasName);
   const shifts = {};
   const events = {};
 
@@ -262,7 +265,8 @@ function shareBuildGoogleSource(meta, items) {
 
   return {
     id: meta.id,
-    name: storeImportedCalendarName({ ...meta, ...identity }),
+    name: storeImportedCalendarAutoName({ ...meta, ...identity }),
+    aliasName,
     readonly: true,
     sourceType: 'google-public',
     googleCalendarId: meta.googleCalendarId,
@@ -308,9 +312,10 @@ async function shareRefreshImportedCalendar(id, options = {}) {
         const text = await response.text();
         return icalBuildSource(hydratedMeta, text);
       })();
-  storeSaveImported({
+  const savedMeta = storeSaveImported({
     id: source.id,
     name: source.name,
+    aliasName: source.aliasName,
     icalUrl: source.icalUrl,
     googleCalendarId: source.googleCalendarId || null,
     sourceType: source.sourceType,
@@ -324,11 +329,16 @@ async function shareRefreshImportedCalendar(id, options = {}) {
     },
   });
   if (!options.silent) renderImportedList();
+  const resolvedSource = {
+    ...source,
+    name: storeImportedCalendarName(savedMeta),
+    aliasName: savedMeta.aliasName || '',
+  };
   if (currentCal && currentCal.id === source.id) {
-    currentCal = source;
+    currentCal = resolvedSource;
     calRender();
   }
-  return source;
+  return resolvedSource;
 }
 
 async function shareRefreshImportedAction(id, options = {}) {
@@ -355,8 +365,44 @@ async function shareImportByUrl(payload) {
     ? `import:gcal:${googleCalendarId}`
     : `import:${btoa(icalUrl).replace(/=+$/g, '').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
   const identity = storeNormalizeOwnerIdentity(meta);
-  storeSaveImported({ id, icalUrl, googleCalendarId, sourceType: googleCalendarId ? 'google-public' : 'ical', name: storeImportedCalendarName(identity), ...identity });
+  storeSaveImported({ id, icalUrl, googleCalendarId, sourceType: googleCalendarId ? 'google-public' : 'ical', name: storeImportedCalendarAutoName(identity), ...identity });
   return shareRefreshImportedCalendar(id, { silent: true });
+}
+
+function renameImported(id) {
+  const meta = storeGetImportedById(id);
+  if (!meta) {
+    toast('No existe ese calendario');
+    return;
+  }
+
+  const currentAlias = storeCleanImportedAlias(meta.aliasName);
+  const automaticName = storeImportedCalendarAutoName(meta);
+  const nextAlias = prompt(
+    `Nombre visible para este calendario.\n\nDejá vacío para volver a \"${automaticName}\".`,
+    currentAlias || automaticName,
+  );
+  if (nextAlias === null) return;
+
+  const updatedMeta = storeSaveImportedAlias(id, nextAlias);
+  if (!updatedMeta) {
+    toast('No existe ese calendario');
+    return;
+  }
+
+  if (currentCal && currentCal.id === id) currentCal = storeBuildImportedSource(updatedMeta);
+  renderImportedList();
+  renderCalSelector();
+  calRender();
+
+  const hasAlias = !!storeCleanImportedAlias(updatedMeta.aliasName);
+  toast(hasAlias ? `Alias guardado: ${updatedMeta.aliasName}` : `Alias eliminado: ${storeImportedCalendarName(updatedMeta)}`);
+}
+
+function readonlyBannerRenameCurrent(event) {
+  event?.preventDefault();
+  if (!currentCal || !currentCal.readonly) return;
+  renameImported(currentCal.id);
 }
 
 async function shareCheckUrl() {
@@ -395,7 +441,7 @@ function renderImportedList() {
           <div class="imp-date">Feed público:</div>
           <div class="imp-url">${escapeHtml(googleOwnerCalendar.publicIcalUrl)}</div>
         </div>
-        <div class="imp-actions" style="display:flex;gap:4px">
+        <div class="imp-actions">
           <button class="btn btn-sm btn-primary" onclick="selectCalendar('${googleOwnerCalendar.id}');switchTab('calendar')">Ver</button>
         </div>
       </div>
@@ -411,7 +457,8 @@ function renderImportedList() {
           ${shareOwnerIdentityMarkup(meta)}
           <div class="imp-date">Actualizado: ${meta.lastSyncedAt ? new Date(meta.lastSyncedAt).toLocaleString('es') : 'pendiente'}</div>
         </div>
-        <div class="imp-actions" style="display:flex;gap:4px">
+        <div class="imp-actions">
+          <button class="btn btn-sm" onclick="renameImported('${meta.id}')" title="Renombrar calendario importado">✏️</button>
           <button class="btn btn-sm" onclick="refreshImported('${meta.id}')">🔄</button>
           <button class="btn btn-sm btn-primary" onclick="selectCalendar('${meta.id}');switchTab('calendar')">Ver</button>
           <button class="btn btn-sm btn-danger" onclick="removeImported('${meta.id}')">✕</button>
