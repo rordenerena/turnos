@@ -1,8 +1,7 @@
 /* gdrive.js — Google OAuth + Drive: upload own calendars, restore with auth, refresh shared files via browser-safe paths */
 
 const GDRIVE_CLIENT_ID = '743453800087-molu80v03v3ms24ovp194vscc53nr6aj.apps.googleusercontent.com';
-const GDRIVE_API_KEY = 'AIzaSyDQ0i7vJNDF9YxF01Xv7xqmmaJReFwvocY';
-const GDRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
+const GDRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email';
 const GDRIVE_DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 
 let gdriveToken = null;
@@ -105,12 +104,7 @@ function gdriveLogin() {
     scope: GDRIVE_SCOPES,
     callback: (resp) => {
       if (resp.error) return;
-      gdriveToken = resp.access_token;
-      localStorage.setItem('turnos_gdrive_token', JSON.stringify({
-        access_token: resp.access_token,
-        expires_at: Date.now() + resp.expires_in * 1000,
-      }));
-      gapi.client.setToken({ access_token: gdriveToken });
+      gdriveApplyToken(resp);
       gdriveUpdateUI(true);
       gdriveFetchUser();
       toast('Drive conectado ✓');
@@ -118,6 +112,34 @@ function gdriveLogin() {
     },
   });
   client.requestAccessToken({ prompt: '' });
+}
+
+/* Apply a token response and persist it */
+function gdriveApplyToken(resp) {
+  gdriveToken = resp.access_token;
+  localStorage.setItem('turnos_gdrive_token', JSON.stringify({
+    access_token: resp.access_token,
+    expires_at: Date.now() + resp.expires_in * 1000,
+  }));
+  gapi.client.setToken({ access_token: gdriveToken });
+}
+
+/* Request new token with explicit consent (forces scope re-grant). Returns a Promise. */
+function gdriveRequestConsent() {
+  return new Promise((resolve, reject) => {
+    if (typeof google === 'undefined' || !google.accounts) { reject(new Error('Google SDK no disponible')); return; }
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: GDRIVE_CLIENT_ID,
+      scope: GDRIVE_SCOPES,
+      callback: (resp) => {
+        if (resp.error) { reject(new Error(resp.error)); return; }
+        gdriveApplyToken(resp);
+        gdriveUpdateUI(true);
+        resolve(resp.access_token);
+      },
+    });
+    client.requestAccessToken({ prompt: 'consent' });
+  });
 }
 
 function gdriveLogout() {
@@ -337,26 +359,32 @@ async function gdriveUploadAndShare(cal) {
   return fileId;
 }
 
-/* Read a shared/imported Drive file: API Key first (public), then auth fallback. */
+/* Read a shared/imported Drive file via gapi.client (handles CORS + auth). */
 async function gdriveReadSharedCalendar(fileId) {
-  // 1. Public read via API Key (files shared as "anyone with the link")
+  if (!gdriveToken) {
+    throw new Error('Conectá Google Drive para sincronizar calendarios importados.');
+  }
   try {
-    const url = `${gdriveGetFileMediaUrl(fileId)}&key=${GDRIVE_API_KEY}`;
-    return await gdriveFetchCalendarJson(url, {}, 'API Key pública');
-  } catch (apiKeyError) {
-    console.warn('API Key read failed:', apiKeyError.message);
-  }
+    const resp = await gapi.client.drive.files.get({ fileId, alt: 'media' });
+    return typeof resp.result === 'string' ? JSON.parse(resp.result) : resp.result;
+  } catch (e) {
+    const status = e?.status || e?.result?.error?.code;
+    if (status === 404) throw new Error('Archivo no encontrado en Drive. Pedile al dueño que vuelva a compartirlo.');
 
-  // 2. Fallback: authenticated read (if user is logged in and has access)
-  if (gdriveToken) {
-    try {
-      return await gdriveReadFileAuthenticated(fileId);
-    } catch (authError) {
-      console.warn('Authenticated read failed:', authError.message);
+    // 403/401 → token might lack drive.readonly scope. Try re-consent once.
+    if (status === 403 || status === 401) {
+      try {
+        toast('Permisos insuficientes. Solicitando acceso...');
+        await gdriveRequestConsent();
+        const retry = await gapi.client.drive.files.get({ fileId, alt: 'media' });
+        return typeof retry.result === 'string' ? JSON.parse(retry.result) : retry.result;
+      } catch (retryErr) {
+        throw new Error('Sin permiso para leer el archivo. Verificá que esté compartido como público y aceptá los permisos de Google.');
+      }
     }
-  }
 
-  throw new Error('No se pudo leer el calendario compartido. Verificá que el dueño haya compartido con Google Drive conectado.');
+    throw new Error(e?.result?.error?.message || e?.message || 'Error al leer desde Drive');
+  }
 }
 
 /* Debounced Drive upload with visual countdown */
