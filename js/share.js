@@ -137,7 +137,9 @@ function removeImported(id) {
   const cal = storeGet(id);
   // Delete from Drive if connected and has driveFileId
   if (gdriveToken && cal && cal.driveFileId) {
-    gapi.client.drive.files.update({ fileId: cal.driveFileId, resource: { trashed: true } }).catch(() => {});
+    fetch(`https://www.googleapis.com/drive/v3/files/${cal.driveFileId}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${gdriveToken}` },
+    }).catch(() => {});
   }
   storeDelete(id);
   // If we were viewing this one, switch to own calendar

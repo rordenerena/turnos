@@ -72,13 +72,22 @@ async function deleteEverything() {
     try {
       const resp = await gapi.client.drive.files.list({
         q: "name contains 'turnos-' and mimeType='application/json' and trashed=false",
-        fields: 'files(id)',
+        fields: 'files(id,name)',
         spaces: 'drive',
       });
-      for (const f of (resp.result.files || [])) {
-        await gapi.client.drive.files.delete({ fileId: f.id }).catch(() => {});
+      const files = resp.result.files || [];
+      toast(`Borrando ${files.length} archivos de Drive...`);
+      for (const f of files) {
+        try {
+          await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${gdriveToken}` },
+          });
+        } catch {}
       }
-    } catch {}
+    } catch (e) {
+      toast('Error borrando Drive: ' + e.message);
+    }
   }
   // Clear localStorage
   localStorage.removeItem(STORE_KEY);
@@ -86,15 +95,17 @@ async function deleteEverything() {
   localStorage.removeItem('turnos_gdrive_token');
   localStorage.removeItem('pendingName');
   currentCal = null;
-  toast('Todo eliminado');
-  location.reload();
+  toast('Todo eliminado ✓');
+  setTimeout(() => location.reload(), 1000);
 }
 
 function deleteCurrentCalendar() {
   if (!currentCal) return;
   if (!confirm(`¿Eliminar "${currentCal.name}"?`)) return;
   if (gdriveToken && currentCal.driveFileId) {
-    gapi.client.drive.files.update({ fileId: currentCal.driveFileId, resource: { trashed: true } }).catch(() => {});
+    fetch(`https://www.googleapis.com/drive/v3/files/${currentCal.driveFileId}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${gdriveToken}` },
+    }).catch(() => {});
   }
   storeDelete(currentCal.id);
   const own = storeEnsureOwn();
