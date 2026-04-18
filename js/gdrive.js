@@ -34,8 +34,15 @@ function gdriveRestoreSession() {
 }
 
 function gdriveLogin() {
-  if (typeof google === 'undefined' || !google.accounts) { toast('Google SDK cargando, intentá de nuevo'); return; }
-  if (!gdriveReady) { toast('Inicializando Drive, intentá de nuevo'); return; }
+  if (typeof google === 'undefined' || !google.accounts) { toast('Cargando Google, esperá unos segundos...'); return; }
+  if (!gdriveReady) {
+    toast('Conectando con Drive...');
+    const check = setInterval(() => {
+      if (gdriveReady) { clearInterval(check); gdriveLogin(); }
+    }, 500);
+    setTimeout(() => clearInterval(check), 10000);
+    return;
+  }
   const client = google.accounts.oauth2.initTokenClient({
     client_id: GDRIVE_CLIENT_ID,
     scope: GDRIVE_SCOPES,
