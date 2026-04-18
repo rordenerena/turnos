@@ -9,7 +9,6 @@ function shareCompress(cal) {
     patterns: cal.patterns,
     updatedAt: cal.updatedAt,
   };
-  if (cal.driveFileId) payload.driveFileId = cal.driveFileId;
   const json = JSON.stringify(payload);
   const compressed = pako.deflate(new TextEncoder().encode(json));
   return btoa(String.fromCharCode(...compressed));
@@ -26,22 +25,13 @@ function shareDecompress(b64) {
 async function shareGenerate() {
   if (!currentCal || currentCal.readonly) { toast('Selecciona tu propio calendario'); return; }
   try {
-    // Upload to Drive if connected
-    if (gdriveToken) {
-      toast('Subiendo a Drive...');
-      await gdriveUploadAndShare(currentCal);
-    }
-
     const compressed = shareCompress(currentCal);
     const url = `${location.origin}${location.pathname}#cal=${compressed}`;
 
     QRCode.toCanvas(document.getElementById('qr-canvas'), url, { width: 250, margin: 2, errorCorrectionLevel: 'L' });
     document.getElementById('share-url').textContent = url;
     document.getElementById('qr-container').classList.remove('hidden');
-    toast(gdriveToken ? 'QR generado con sync ✓' : 'QR generado ✓');
-    document.getElementById('share-sync-hint').textContent = currentCal.driveFileId
-      ? '🟢 Este QR incluye sync con Google Drive'
-      : '⚪ Sin sync — conecta Google Drive en ⚙️ para activarlo';
+    toast('QR generado ✓');
   } catch (e) {
     toast('Error al generar: ' + e.message);
   }
@@ -82,8 +72,7 @@ function shareCheckUrl() {
     currentCal = result.cal;
     // Clean URL hash without reloading
     history.replaceState(null, '', location.pathname + location.search);
-    const syncInfo = data.driveFileId ? ' (con sync 🔄)' : ' (sin sync)';
-    toast((result.isNew ? `Importado "${data.name}"` : `Actualizado "${data.name}"`) + syncInfo);
+    toast(result.isNew ? `Importado "${data.name}" ✓` : `Actualizado "${data.name}" ✓`);
     renderCalSelector();
     calRender();
     switchTab('calendar');
@@ -137,7 +126,6 @@ function renderImportedList() {
         <div class="imp-date">Actualizado: ${new Date(c.updatedAt).toLocaleString('es')}</div>
       </div>
       <div style="display:flex;gap:4px">
-        ${c.driveFileId ? `<button class="btn btn-sm btn-accent" onclick="refreshFromDrive('${c.id}')">🔄</button>` : ''}
         <button class="btn btn-sm btn-primary" onclick="selectCalendar('${c.id}');switchTab('calendar')">Ver</button>
         <button class="btn btn-sm btn-danger" onclick="removeImported('${c.id}')">✕</button>
       </div>
@@ -170,25 +158,6 @@ function removeOwn(id) {
   renderImportedList();
   renderCalSelector();
   toast('Calendario eliminado');
-}
-
-async function refreshFromDrive(calId) {
-  const cal = storeGet(calId);
-  if (!cal || !cal.driveFileId) { toast('Sin enlace de Drive'); return; }
-  try {
-    toast('Actualizando...');
-    const data = await gdriveReadSharedCalendar(cal.driveFileId);
-    if (data) {
-      data.driveFileId = cal.driveFileId;
-      const result = storeImportCalendar(data);
-      if (currentCal && currentCal.id === calId) { currentCal = result.cal; calRender(); }
-      renderCalSelector();
-      renderImportedList();
-      toast(`${cal.name} actualizado ✓`);
-    }
-  } catch (e) {
-    toast('Error al actualizar: ' + e.message);
-  }
 }
 
 function removeImported(id) {

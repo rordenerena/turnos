@@ -178,13 +178,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (savedTab) switchTab(savedTab);
   renderImportedList();
 
-  // Init Google Drive sync
+  // Init Google Drive backup
   gdriveInit();
   // Ensure Drive UI is correct on load
   setTimeout(() => gdriveUpdateUI(!!gdriveToken), 2000);
-
-  // Safe background refresh for imported shared calendars
-  setTimeout(() => gdriveFetchImported().catch(e => console.warn('Imported auto-refresh failed:', e)), 1200);
 
   // Register SW + detect updates
   if ('serviceWorker' in navigator) {
