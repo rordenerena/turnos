@@ -270,6 +270,7 @@ function renderPatternsList() {
 
 async function patternDelete(patternId) {
   if (!currentCal || currentCal.readonly) return;
+  if (!confirm('¿Eliminar este patrón repetitivo?')) return;
   await googleCalendarDeletePattern(patternId);
   renderPatternsList();
   toast('Patrón eliminado');
