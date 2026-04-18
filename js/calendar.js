@@ -5,6 +5,11 @@ let calYear, calMonth;
 let selectedDate = null;
 let patternSeq = [];
 
+function getModalDraftDay(ds) {
+  if (typeof modalGetDraft === 'function') return modalGetDraft(ds);
+  return null;
+}
+
 function calInit() {
   const now = new Date();
   calYear = now.getFullYear();
@@ -59,8 +64,8 @@ function calRender() {
   for (let i = 0; i < startDay; i++) html += '<div class="cal-day empty"></div>';
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = dateStr(calYear, calMonth, d);
-    const shifts = ((currentCal && currentCal.shifts && currentCal.shifts[ds]) || []).slice().sort(sortShifts);
-    const evts = (currentCal && currentCal.events && currentCal.events[ds]) || [];
+    const shifts = getDayShifts(ds);
+    const evts = getDayEvents(ds);
     html += `<div class="cal-day${ds === todayStr ? ' today' : ''}" onclick="dayClick('${ds}')">`;
     html += `<div class="day-num">${d}</div>`;
     if (shifts.length) {
@@ -143,10 +148,18 @@ function calInitSwipe() {
 }
 
 function getDayShifts(ds) {
-  return ((currentCal && currentCal.shifts && currentCal.shifts[ds]) || []).slice().sort(sortShifts);
+  const draft = getModalDraftDay(ds);
+  const shifts = draft ? draft.shifts : ((currentCal && currentCal.shifts && currentCal.shifts[ds]) || []);
+  return shifts.slice().sort(sortShifts);
 }
 
-async function setShift(shift) {
+function getDayEvents(ds) {
+  const draft = getModalDraftDay(ds);
+  const events = draft ? draft.events : ((currentCal && currentCal.events && currentCal.events[ds]) || []);
+  return events.slice();
+}
+
+function setShift(shift) {
   if (!currentCal || currentCal.readonly) return;
   const current = getDayShifts(selectedDate);
   const byType = {};
@@ -154,12 +167,12 @@ async function setShift(shift) {
   const nextTypes = current.map(item => item.type);
 
   if (shift === null) {
-    await googleCalendarReplaceDayShifts(selectedDate, []);
+    modalSetDraftShifts([]);
   } else {
     const idx = nextTypes.indexOf(shift);
     if (idx >= 0) nextTypes.splice(idx, 1);
     else nextTypes.push(shift);
-    await googleCalendarReplaceDayShifts(selectedDate, nextTypes.sort((a, b) => sortShifts({ type: a }, { type: b })).map(type => ({
+    modalSetDraftShifts(nextTypes.sort((a, b) => sortShifts({ type: a }, { type: b })).map(type => ({
       type,
       note: byType[type]?.note || '',
     })));
@@ -169,13 +182,12 @@ async function setShift(shift) {
   modalRenderShift();
 }
 
-async function setShiftNote(type, note) {
+function setShiftNote(type, note) {
   if (!currentCal || currentCal.readonly) return;
-  const next = getDayShifts(selectedDate).map(item => ({
+  modalSetDraftShifts(getDayShifts(selectedDate).map(item => ({
     type: item.type,
     note: item.type === type ? note.trim() : (item.note || ''),
-  }));
-  await googleCalendarReplaceDayShifts(selectedDate, next);
+  })));
   calRender();
   modalRenderShift();
 }

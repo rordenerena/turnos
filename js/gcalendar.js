@@ -400,21 +400,33 @@ async function googleCalendarPatchEvent(eventId, payload) {
   });
 }
 
-async function googleCalendarReplaceDayShifts(ds, nextShifts) {
+async function googleCalendarReplaceDayContent(ds, nextShifts, nextEvents) {
   const dayShifts = ((currentCal && currentCal.shifts && currentCal.shifts[ds]) || []).slice();
-  const manualSources = dayShifts.filter(item => item.source?.kind === 'manual');
-  const patternSources = dayShifts.filter(item => item.source?.kind === 'pattern-instance');
+  const dayEvents = ((currentCal && currentCal.events && currentCal.events[ds]) || []).slice();
+  const manualShifts = dayShifts.filter(item => item.source?.kind === 'manual');
+  const patternShifts = dayShifts.filter(item => item.source?.kind === 'pattern-instance');
+  const manualEvents = dayEvents.filter(item => item.source?.kind === 'event');
 
-  for (const item of manualSources) {
+  for (const item of manualShifts) {
     await googleCalendarDeleteEvent(item.source.eventId);
   }
-  for (const item of patternSources) {
+  for (const item of patternShifts) {
     await googleCalendarPatchEvent(item.source.eventId, { status: 'cancelled' });
+  }
+  for (const item of manualEvents) {
+    await googleCalendarDeleteEvent(item.source.eventId);
   }
   for (const shift of nextShifts) {
     await googleCalendarCreateEvent(googleCalendarShiftPayload(ds, shift));
   }
+  for (const event of nextEvents) {
+    await googleCalendarCreateEvent(googleCalendarEventPayload(ds, event.text));
+  }
   await googleCalendarRefreshOwner({ silent: true });
+}
+
+async function googleCalendarReplaceDayShifts(ds, nextShifts) {
+  return googleCalendarReplaceDayContent(ds, nextShifts, ((currentCal && currentCal.events && currentCal.events[ds]) || []).slice());
 }
 
 async function googleCalendarCreatePattern(sequence, startDate, endDate) {

@@ -1,19 +1,94 @@
 /* events.js — modal y CRUD sobre Google Calendar */
 
+let modalDayDraft = null;
+
+function cloneDayShifts(items) {
+  return (items || []).map(item => ({
+    type: item.type,
+    note: item.note || '',
+    source: item.source ? { ...item.source } : null,
+  }));
+}
+
+function cloneDayEvents(items) {
+  return (items || []).map(item => ({
+    text: item.text || '',
+    source: item.source ? { ...item.source } : null,
+  }));
+}
+
+function normalizeDayDraftValue(day) {
+  return {
+    shifts: cloneDayShifts(day?.shifts).sort(sortShifts).map(item => ({ type: item.type, note: item.note || '' })),
+    events: cloneDayEvents(day?.events).map(item => ({ text: item.text || '' })),
+  };
+}
+
+function modalDraftIsDirty() {
+  if (!modalDayDraft) return false;
+  return JSON.stringify(normalizeDayDraftValue(modalDayDraft.original)) !== JSON.stringify(normalizeDayDraftValue(modalDayDraft.current));
+}
+
+function modalGetDraft(ds) {
+  if (!modalDayDraft || modalDayDraft.ds !== ds) return null;
+  return modalDayDraft.current;
+}
+
+function modalSetDraftShifts(nextShifts) {
+  if (!modalDayDraft) return;
+  modalDayDraft.current.shifts = cloneDayShifts(nextShifts).sort(sortShifts);
+}
+
+function modalSetDraftEvents(nextEvents) {
+  if (!modalDayDraft) return;
+  modalDayDraft.current.events = cloneDayEvents(nextEvents);
+}
+
+function modalResetDraft() {
+  modalDayDraft = null;
+  const input = document.getElementById('event-text');
+  if (input) input.value = '';
+}
+
 function modalOpen(ds) {
   selectedDate = ds;
+  const readonly = !!(currentCal && currentCal.readonly);
+  modalDayDraft = readonly ? null : {
+    ds,
+    original: {
+      shifts: cloneDayShifts((currentCal && currentCal.shifts && currentCal.shifts[ds]) || []),
+      events: cloneDayEvents((currentCal && currentCal.events && currentCal.events[ds]) || []),
+    },
+    current: {
+      shifts: cloneDayShifts((currentCal && currentCal.shifts && currentCal.shifts[ds]) || []),
+      events: cloneDayEvents((currentCal && currentCal.events && currentCal.events[ds]) || []),
+    },
+    saving: false,
+  };
   document.getElementById('modal-overlay').classList.remove('hidden');
   document.getElementById('modal-date').textContent = formatDateLabel(ds);
-  const readonly = !!(currentCal && currentCal.readonly);
   document.getElementById('modal-shift-buttons').classList.toggle('hidden', readonly);
   document.getElementById('modal-add-event').classList.toggle('hidden', readonly);
   modalRenderShift();
   modalRenderEvents();
 }
 
-function modalClose(e) {
+async function modalClose(e) {
   if (e && e.target && e.target.id !== 'modal-overlay') return;
+  if (modalDayDraft?.saving) return;
+  if (currentCal && !currentCal.readonly && modalDraftIsDirty()) {
+    modalDayDraft.saving = true;
+    try {
+      await googleCalendarReplaceDayContent(selectedDate, modalDayDraft.current.shifts, modalDayDraft.current.events);
+    } catch (error) {
+      modalDayDraft.saving = false;
+      toast(`No se pudo guardar el día: ${error.message}`);
+      return;
+    }
+  }
   document.getElementById('modal-overlay').classList.add('hidden');
+  modalResetDraft();
+  calRender();
   selectedDate = null;
 }
 
@@ -41,7 +116,7 @@ function modalRenderShift() {
 
 function modalRenderEvents() {
   const list = document.getElementById('modal-events-list');
-  const events = (currentCal && currentCal.events && currentCal.events[selectedDate]) || [];
+  const events = getDayEvents(selectedDate);
   const readonly = !!(currentCal && currentCal.readonly);
   if (!events.length) {
     list.innerHTML = '<p class="hint">Sin eventos.</p>';
@@ -55,25 +130,22 @@ function modalRenderEvents() {
   `).join('');
 }
 
-async function addEvent() {
+function addEvent() {
   if (!currentCal || currentCal.readonly) return;
   const input = document.getElementById('event-text');
   const text = input.value.trim();
   if (!text) return;
-  await googleCalendarCreateEvent(googleCalendarEventPayload(selectedDate, text));
+  modalSetDraftEvents([...getDayEvents(selectedDate), { text }]);
   input.value = '';
-  await googleCalendarRefreshOwner({ silent: true });
   modalRenderEvents();
   calRender();
 }
 
-async function deleteEvent(index) {
+function deleteEvent(index) {
   if (!currentCal || currentCal.readonly) return;
-  const events = (currentCal.events && currentCal.events[selectedDate]) || [];
-  const event = events[index];
-  if (!event?.source?.eventId) return;
-  await googleCalendarDeleteEvent(event.source.eventId);
-  await googleCalendarRefreshOwner({ silent: true });
+  const events = getDayEvents(selectedDate);
+  if (!events[index]) return;
+  modalSetDraftEvents(events.filter((_, eventIndex) => eventIndex !== index));
   modalRenderEvents();
   calRender();
 }
