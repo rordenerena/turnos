@@ -302,6 +302,15 @@ async function gdriveUploadAndShare(cal) {
       body: JSON.stringify(payload),
     });
     await gdriveAssertOk(resp, 'No se pudo actualizar el archivo en Drive');
+    // Ensure public read permission exists (idempotent — Drive ignores if already set)
+    try {
+      await gapi.client.drive.permissions.create({
+        fileId: fileId,
+        resource: { role: 'reader', type: 'anyone' },
+      });
+    } catch (e) {
+      // Permission already exists — safe to ignore
+    }
   } else {
     const metadata = { name: fileName, mimeType: 'application/json', parents: [folderId] };
     const form = new FormData();
