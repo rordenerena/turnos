@@ -101,7 +101,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 
 .hidden{display:none!important}
 .hint{font-size:.8rem;color:var(--muted);margin-bottom:8px}
-.app-version{position:fixed;bottom:0;left:0;right:0;text-align:center;font-size:.65rem;color:#ececec;padding:4px 0}
+.app-version{position:fixed;bottom:0;left:0;right:0;text-align:center;font-size:.65rem;color:#ccc;padding:4px 0}
 
 /* Sync indicator */
 #sync-indicator{position:fixed;bottom:88px;right:20px;width:36px;height:36px;z-index:150}
