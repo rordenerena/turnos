@@ -84,6 +84,9 @@ function shareCheckUrl() {
     history.replaceState(null, '', location.pathname + location.search);
     const syncInfo = data.driveFileId ? ' (con sync 🔄)' : ' (sin sync)';
     toast((result.isNew ? `Importado "${data.name}"` : `Actualizado "${data.name}"`) + syncInfo);
+    renderCalSelector();
+    calRender();
+    switchTab('calendar');
     return true;
   } catch (e) {
     toast('Error al importar: ' + e.message);
