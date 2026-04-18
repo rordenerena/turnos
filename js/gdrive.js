@@ -1,7 +1,7 @@
 /* gdrive.js — Google OAuth + Drive: upload own calendars, restore with auth, refresh shared files via browser-safe paths */
 
 const GDRIVE_CLIENT_ID = '743453800087-molu80v03v3ms24ovp194vscc53nr6aj.apps.googleusercontent.com';
-const GDRIVE_API_KEY = 'AIzaSyBi2b2bz4XuROg0HKkFGSTeuMPjNOBIJk8';
+const GDRIVE_API_KEY = 'AIzaSyDQ0i7vJNDF9YxF01Xv7xqmmaJReFwvocY';
 const GDRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
 const GDRIVE_DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 
