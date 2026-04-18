@@ -360,6 +360,9 @@ function scheduleDriveSync() {
   clearTimeout(_driveTimer);
   clearInterval(_countdownInterval);
 
+  // Capture calendar id NOW, not when the timeout fires
+  const calId = currentCal.id;
+
   const indicator = document.getElementById('sync-indicator');
   const ring = document.getElementById('sync-ring-fg');
   const icon = document.getElementById('sync-icon');
@@ -380,7 +383,14 @@ function scheduleDriveSync() {
     ring.style.strokeDashoffset = 0;
     icon.textContent = '🔄';
     try {
-      await gdriveUploadAndShare(currentCal);
+      // Read fresh from localStorage to ensure we upload the latest state
+      const freshCal = storeGet(calId);
+      if (!freshCal || freshCal.readonly) return;
+      await gdriveUploadAndShare(freshCal);
+      // Update in-memory reference if still viewing this calendar
+      if (currentCal && currentCal.id === calId) {
+        currentCal.driveFileId = freshCal.driveFileId;
+      }
       icon.textContent = '✅';
       ring.style.stroke = '#a5d6a7';
     } catch (e) {
