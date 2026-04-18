@@ -227,6 +227,9 @@ function googleCalendarParseRRuleUntil(recurrence) {
 function googleCalendarBuildPatterns(patternMasters) {
   const groups = {};
   patternMasters.forEach(event => {
+    if (event.status === 'cancelled') return;
+    if (event.recurringEventId) return;
+    if (!event.recurrence || !event.recurrence.length) return;
     const priv = googleCalendarEventPrivate(event);
     const patternId = priv.turnosPatternId;
     if (!patternId) return;
@@ -456,7 +459,11 @@ async function googleCalendarDeletePattern(patternId) {
   const pattern = (googleOwnerCalendar?.patterns || []).find(item => item.patternId === patternId);
   if (!pattern) return;
   for (const source of pattern.sources) {
-    await googleCalendarDeleteEvent(source.eventId);
+    try {
+      await googleCalendarDeleteEvent(source.eventId);
+    } catch (error) {
+      if (!String(error.message || '').includes('Resource has been deleted')) throw error;
+    }
   }
   await googleCalendarRefreshOwner({ silent: true });
 }
