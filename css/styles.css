@@ -121,7 +121,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .sync-ring-fg{fill:none;stroke:#a5d6a7;stroke-width:2.5;stroke-dasharray:100;stroke-dashoffset:100;stroke-linecap:round;transition:stroke-dashoffset .1s linear}
 
 /* Onboarding Modal */
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:300;padding:24px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:flex-start;justify-content:center;z-index:300;padding:60px 24px 24px}
 .modal-content{background:var(--card);border-radius:16px;padding:24px;width:100%;max-width:320px}
 .modal-content h2{margin-bottom:16px}
 .modal-content p{margin-bottom:16px;font-size:.9rem}
