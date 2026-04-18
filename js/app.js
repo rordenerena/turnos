@@ -158,6 +158,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Init Google Drive sync
   gdriveInit();
+  // Ensure Drive UI is correct on load
+  setTimeout(() => gdriveUpdateUI(!!gdriveToken), 2000);
 
   // Fetch updates for imported calendars from Drive (delayed to avoid hammering on reloads)
   setTimeout(gdriveFetchImported, 5000);
