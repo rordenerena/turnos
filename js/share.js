@@ -122,7 +122,7 @@ function renderImportedList() {
       </div>
       <div style="display:flex;gap:4px">
         <button class="btn btn-sm btn-primary" onclick="selectCalendar('${c.id}');switchTab('calendar')">Ver</button>
-        ${mine.length > 1 ? `<button class="btn btn-sm btn-danger" onclick="removeOwn('${c.id}')">✕</button>` : ''}
+        <button class="btn btn-sm btn-danger" onclick="removeOwn('${c.id}')">✕</button>
       </div>
     </div>`).join('');
   }
