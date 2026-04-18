@@ -175,7 +175,6 @@ function removeOwn(id) {
 async function refreshFromDrive(calId) {
   const cal = storeGet(calId);
   if (!cal || !cal.driveFileId) { toast('Sin enlace de Drive'); return; }
-  if (!gdriveToken) { toast('Conecta Google Drive en ⚙️ primero'); return; }
   try {
     toast('Actualizando...');
     const data = await gdriveReadPublic(cal.driveFileId);
@@ -193,13 +192,6 @@ async function refreshFromDrive(calId) {
 }
 
 function removeImported(id) {
-  const cal = storeGet(id);
-  // Delete from Drive if connected and has driveFileId
-  if (gdriveToken && cal && cal.driveFileId) {
-    fetch(`https://www.googleapis.com/drive/v3/files/${cal.driveFileId}`, {
-      method: 'DELETE', headers: { Authorization: `Bearer ${gdriveToken}` },
-    }).catch(() => {});
-  }
   storeDelete(id);
   // If we were viewing this one, switch to own calendar
   if (currentCal && currentCal.id === id) {

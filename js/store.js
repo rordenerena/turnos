@@ -22,9 +22,14 @@ function storeGet(id) {
   return storeGetAll()[id] || null;
 }
 
-function storeSave(cal) {
+function storeSave(cal, options = {}) {
   const cals = storeGetAll();
-  cal.updatedAt = new Date().toISOString();
+  if (options.touchUpdatedAt !== false) {
+    cal.updatedAt = new Date().toISOString();
+  }
+  if (options.syncedAt) {
+    cal.lastSyncedAt = options.syncedAt;
+  }
   cals[cal.id] = cal;
   storeSaveAll(cals);
 }
@@ -72,21 +77,23 @@ function storeCreateCalendar(name) {
 function storeImportCalendar(data) {
   const cals = storeGetAll();
   const existing = cals[data.id];
+  const syncedAt = new Date().toISOString();
+  const remoteUpdatedAt = data.updatedAt || syncedAt;
   if (existing) {
-    // Update existing imported calendar with current timestamp
+    // Update existing imported calendar preserving remote freshness
     existing.name = data.name;
     existing.shifts = data.shifts;
     existing.events = data.events;
     existing.patterns = data.patterns;
-    existing.updatedAt = new Date().toISOString();
+    existing.updatedAt = remoteUpdatedAt;
     existing.readonly = true;
     if (data.driveFileId) existing.driveFileId = data.driveFileId;
-    storeSave(existing);
+    storeSave(existing, { touchUpdatedAt: false, syncedAt });
     return { cal: existing, isNew: false };
   }
   // New import
-  const cal = { ...data, readonly: true };
-  storeSave(cal);
+  const cal = { ...data, readonly: true, updatedAt: remoteUpdatedAt };
+  storeSave(cal, { touchUpdatedAt: false, syncedAt });
   return { cal, isNew: true };
 }
 

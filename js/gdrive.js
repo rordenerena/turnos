@@ -7,6 +7,47 @@ const GDRIVE_DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/
 let gdriveToken = null;
 let gdriveReady = false;
 
+function gdriveIsImportedCalendar(cal) {
+  return !!(cal && cal.readonly);
+}
+
+async function gdriveParseErrorResponse(resp, fallbackMessage) {
+  let detail = '';
+  try {
+    const contentType = resp.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data = await resp.json();
+      detail = data?.error?.message || data?.message || '';
+    } else {
+      detail = (await resp.text()).trim();
+    }
+  } catch {}
+
+  if (resp.status === 404) return 'Archivo compartido no encontrado. Pedile al dueño que vuelva a compartirlo.';
+  if (resp.status === 401 || resp.status === 403) {
+    return detail || 'Archivo compartido inaccesible. Verificá que siga publicado en Drive para cualquiera con el enlace.';
+  }
+  return detail || `${fallbackMessage} (${resp.status})`;
+}
+
+async function gdriveAssertOk(resp, fallbackMessage) {
+  if (!resp.ok) {
+    throw new Error(await gdriveParseErrorResponse(resp, fallbackMessage));
+  }
+  return resp;
+}
+
+async function gdriveTrySharedFetch(url, description) {
+  try {
+    const resp = await fetch(url, { redirect: 'follow' });
+    await gdriveAssertOk(resp, `No se pudo leer el calendario por ${description}`);
+    return await resp.json();
+  } catch (e) {
+    console.warn(`Shared Drive read failed via ${description}:`, e.message || e);
+    throw e;
+  }
+}
+
 /* Init Google APIs */
 function gdriveInit() {
   if (typeof gapi !== 'undefined') {
@@ -119,9 +160,8 @@ async function gdriveManualSync() {
   try {
     await gdriveRestoreCalendars();
     await gdriveFetchImported();
-    // Upload all calendars (own + imported as backup)
-    const all = Object.values(storeGetAll());
-    for (const cal of all) {
+    const mine = storeGetMine();
+    for (const cal of mine) {
       await gdriveUploadAndShare(cal);
     }
     toast('Sincronización completa ✓');
@@ -155,10 +195,10 @@ async function gdriveRestoreCalendars() {
             storeDelete(emptyDupe.id);
           }
           data.readonly = false;
-          storeSave(data);
+          storeSave(data, { touchUpdatedAt: false, syncedAt: new Date().toISOString() });
           restored++;
         } else if (data.updatedAt && data.updatedAt > (local.updatedAt || '')) {
-          storeSave({ ...local, ...data, readonly: local.readonly });
+          storeSave({ ...local, ...data, readonly: local.readonly }, { touchUpdatedAt: false, syncedAt: new Date().toISOString() });
           restored++;
         }
       } catch {}
@@ -211,6 +251,7 @@ async function gdriveGetFolder() {
 
 async function gdriveUploadAndShare(cal) {
   if (!gdriveToken) throw new Error('No conectado a Drive');
+  if (gdriveIsImportedCalendar(cal)) throw new Error('Los calendarios importados son solo lectura y no se suben a Drive');
   const folderId = await gdriveGetFolder();
   const payload = { id: cal.id, name: cal.name, shifts: cal.shifts, events: cal.events, patterns: cal.patterns, updatedAt: cal.updatedAt, readonly: !!cal.readonly, driveFileId: cal.driveFileId || null };
   const fileName = `turnos-${cal.id}.json`;
@@ -242,11 +283,12 @@ async function gdriveUploadAndShare(cal) {
   }
 
   if (fileId) {
-    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+    const resp = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${gdriveToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+    await gdriveAssertOk(resp, 'No se pudo actualizar el archivo en Drive');
   } else {
     const metadata = { name: fileName, mimeType: 'application/json', parents: [folderId] };
     const form = new FormData();
@@ -257,7 +299,9 @@ async function gdriveUploadAndShare(cal) {
       headers: { Authorization: `Bearer ${gdriveToken}` },
       body: form,
     });
+    await gdriveAssertOk(resp, 'No se pudo crear el archivo en Drive');
     fileId = (await resp.json()).id;
+    if (!fileId) throw new Error('Drive no devolvió un fileId válido');
 
     await gapi.client.drive.permissions.create({
       fileId: fileId,
@@ -271,21 +315,29 @@ async function gdriveUploadAndShare(cal) {
   return fileId;
 }
 
-/* Read a public Drive file using CORS proxy */
+/* Read a shared Drive file, direct first and proxy last */
 async function gdriveReadPublic(fileId) {
-  const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
-  // Try allorigins proxy
-  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-  try {
-    const resp = await fetch(proxyUrl);
-    if (!resp.ok) {
-      if (resp.status === 404) throw new Error('Archivo no encontrado');
-      throw new Error(`Error ${resp.status}`);
+  const apiUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+  const directUrls = [
+    { url: apiUrl, description: 'Google Drive API directa' },
+    { url: `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}`, description: 'drive.google.com pública' },
+  ];
+  let lastError = null;
+
+  for (const attempt of directUrls) {
+    try {
+      return await gdriveTrySharedFetch(attempt.url, attempt.description);
+    } catch (e) {
+      lastError = e;
     }
-    return resp.json();
+  }
+
+  try {
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`;
+    return await gdriveTrySharedFetch(proxyUrl, 'proxy de compatibilidad');
   } catch (e) {
-    console.warn('Proxy fetch failed:', e.message);
-    throw new Error('Error al conectar. Reimportá el QR.');
+    const message = e?.message || lastError?.message || 'No se pudo leer el archivo compartido';
+    throw new Error(`${message}. Si el enlace sigue bien, probá reimportar el QR o actualizar más tarde.`);
   }
 }
 
@@ -333,8 +385,8 @@ function scheduleDriveSync() {
 
 /* Fetch updates for all imported calendars that have driveFileId */
 async function gdriveFetchImported() {
-  if (!gdriveToken) return;
   const imported = storeGetImported();
+  let updated = false;
   for (const cal of imported) {
     if (!cal.driveFileId) continue;
     try {
@@ -342,6 +394,7 @@ async function gdriveFetchImported() {
       if (data && data.updatedAt && data.updatedAt > (cal.updatedAt || '')) {
         data.driveFileId = cal.driveFileId;
         const result = storeImportCalendar(data);
+        updated = true;
         if (currentCal && currentCal.id === cal.id) {
           currentCal = result.cal;
           calRender();
@@ -352,4 +405,5 @@ async function gdriveFetchImported() {
       console.warn(`Drive fetch failed for ${cal.name}:`, e);
     }
   }
+  if (updated) renderImportedList();
 }

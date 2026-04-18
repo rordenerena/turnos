@@ -134,7 +134,7 @@ async function deleteEverything() {
 function deleteCurrentCalendar() {
   if (!currentCal) return;
   if (!confirm(`¿Eliminar "${currentCal.name}"?`)) return;
-  if (gdriveToken && currentCal.driveFileId) {
+  if (gdriveToken && currentCal.driveFileId && !currentCal.readonly) {
     fetch(`https://www.googleapis.com/drive/v3/files/${currentCal.driveFileId}`, {
       method: 'DELETE', headers: { Authorization: `Bearer ${gdriveToken}` },
     }).catch(() => {});
@@ -156,21 +156,22 @@ document.addEventListener('DOMContentLoaded', () => {
   // Check URL hash for shared calendar import first
   shareCheckUrl();
 
-  // Then ensure we have a calendar
+  // Then ensure we have at least one calendar to show
   const mine = storeGetMine();
-  if (mine.length === 0) {
-    // No own calendar — show onboarding
+  const imported = storeGetImported();
+  if (mine.length === 0 && imported.length === 0) {
+    // No calendars at all — show onboarding
     document.getElementById('onboard').classList.remove('hidden');
-    return;
+  } else {
+    // Load active or first available calendar (own or imported)
+    const activeId = storeGetActive();
+    currentCal = storeGet(activeId) || mine[0] || imported[0];
+    if (currentCal) {
+      storeSetActive(currentCal.id);
+      renderCalSelector();
+      calRender();
+    }
   }
-
-  // Load active or first calendar
-  const activeId = storeGetActive();
-  currentCal = storeGet(activeId) || mine[0];
-  storeSetActive(currentCal.id);
-
-  renderCalSelector();
-  calRender();
 
   // Restore last active tab
   const savedTab = localStorage.getItem('turnos_tab');
@@ -182,7 +183,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Ensure Drive UI is correct on load
   setTimeout(() => gdriveUpdateUI(!!gdriveToken), 2000);
 
-  // Automatic sync for imported calendars disabled - use manual refresh
+  // Safe background refresh for imported shared calendars
+  setTimeout(() => gdriveFetchImported().catch(e => console.warn('Imported auto-refresh failed:', e)), 1200);
 
   // Register SW + detect updates
   if ('serviceWorker' in navigator) {
