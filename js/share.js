@@ -177,7 +177,7 @@ async function refreshFromDrive(calId) {
   if (!cal || !cal.driveFileId) { toast('Sin enlace de Drive'); return; }
   try {
     toast('Actualizando...');
-    const data = await gdriveReadPublic(cal.driveFileId);
+    const data = await gdriveReadSharedCalendar(cal.driveFileId);
     if (data) {
       data.driveFileId = cal.driveFileId;
       const result = storeImportCalendar(data);

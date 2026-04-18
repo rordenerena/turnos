@@ -1,4 +1,4 @@
-/* gdrive.js — Google OAuth + Drive: upload own calendar, share publicly, read public files */
+/* gdrive.js — Google OAuth + Drive: upload own calendars, restore with auth, refresh shared files via browser-safe paths */
 
 const GDRIVE_CLIENT_ID = '743453800087-molu80v03v3ms24ovp194vscc53nr6aj.apps.googleusercontent.com';
 const GDRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
@@ -37,15 +37,27 @@ async function gdriveAssertOk(resp, fallbackMessage) {
   return resp;
 }
 
-async function gdriveTrySharedFetch(url, description) {
+async function gdriveFetchCalendarJson(url, options, description) {
   try {
-    const resp = await fetch(url, { redirect: 'follow' });
+    const resp = await fetch(url, { redirect: 'follow', ...options });
     await gdriveAssertOk(resp, `No se pudo leer el calendario por ${description}`);
     return await resp.json();
   } catch (e) {
-    console.warn(`Shared Drive read failed via ${description}:`, e.message || e);
     throw e;
   }
+}
+
+function gdriveGetFileMediaUrl(fileId) {
+  return `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+}
+
+async function gdriveReadFileAuthenticated(fileId) {
+  if (!gdriveToken) throw new Error('No hay sesión autenticada de Drive');
+  return gdriveFetchCalendarJson(
+    gdriveGetFileMediaUrl(fileId),
+    { headers: { Authorization: `Bearer ${gdriveToken}` } },
+    'Google Drive autenticado'
+  );
 }
 
 /* Init Google APIs */
@@ -183,7 +195,7 @@ async function gdriveRestoreCalendars() {
     let restored = 0;
     for (const file of files) {
       try {
-        const data = await gdriveReadPublic(file.id);
+        const data = await gdriveReadFileAuthenticated(file.id);
         if (!data || !data.id) continue;
         data.driveFileId = file.id;
         const local = storeGet(data.id);
@@ -315,29 +327,25 @@ async function gdriveUploadAndShare(cal) {
   return fileId;
 }
 
-/* Read a shared Drive file, direct first and proxy last */
-async function gdriveReadPublic(fileId) {
-  const apiUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
-  const directUrls = [
-    { url: apiUrl, description: 'Google Drive API directa' },
-    { url: `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}`, description: 'drive.google.com pública' },
-  ];
-  let lastError = null;
+/* Read a shared/imported Drive file with auth when available, otherwise via proxy fallback. */
+async function gdriveReadSharedCalendar(fileId) {
+  let authError = null;
 
-  for (const attempt of directUrls) {
+  if (gdriveToken) {
     try {
-      return await gdriveTrySharedFetch(attempt.url, attempt.description);
+      return await gdriveReadFileAuthenticated(fileId);
     } catch (e) {
-      lastError = e;
+      authError = e;
     }
   }
 
   try {
+    const apiUrl = gdriveGetFileMediaUrl(fileId);
     const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`;
-    return await gdriveTrySharedFetch(proxyUrl, 'proxy de compatibilidad');
+    return await gdriveFetchCalendarJson(proxyUrl, {}, 'proxy público de compatibilidad');
   } catch (e) {
-    const message = e?.message || lastError?.message || 'No se pudo leer el archivo compartido';
-    throw new Error(`${message}. Si el enlace sigue bien, probá reimportar el QR o actualizar más tarde.`);
+    const message = authError?.message || e?.message || 'No se pudo leer el archivo compartido';
+    throw new Error(`${message}. En una app 100% estática la actualización pública desde Drive puede requerir un proxy compatible o que el dueño vuelva a compartir el archivo.`);
   }
 }
 
@@ -390,7 +398,7 @@ async function gdriveFetchImported() {
   for (const cal of imported) {
     if (!cal.driveFileId) continue;
     try {
-      const data = await gdriveReadPublic(cal.driveFileId);
+      const data = await gdriveReadSharedCalendar(cal.driveFileId);
       if (data && data.updatedAt && data.updatedAt > (cal.updatedAt || '')) {
         data.driveFileId = cal.driveFileId;
         const result = storeImportCalendar(data);
