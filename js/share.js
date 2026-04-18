@@ -224,7 +224,7 @@ function icalBuildSource(meta, text) {
 
   return {
     id: meta.id,
-    name: parsed.name || meta.name || 'Calendario importado',
+    name: storeImportedCalendarName({ ...meta, ...identity, name: parsed.name || meta.name || '' }),
     readonly: true,
     sourceType: 'ical',
     googleCalendarId: meta.googleCalendarId || googleCalendarIdFromIcalUrl(meta.icalUrl),
@@ -262,7 +262,7 @@ function shareBuildGoogleSource(meta, items) {
 
   return {
     id: meta.id,
-    name: meta.name || 'Calendario importado',
+    name: storeImportedCalendarName({ ...meta, ...identity }),
     readonly: true,
     sourceType: 'google-public',
     googleCalendarId: meta.googleCalendarId,
@@ -355,7 +355,7 @@ async function shareImportByUrl(payload) {
     ? `import:gcal:${googleCalendarId}`
     : `import:${btoa(icalUrl).replace(/=+$/g, '').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
   const identity = storeNormalizeOwnerIdentity(meta);
-  storeSaveImported({ id, icalUrl, googleCalendarId, sourceType: googleCalendarId ? 'google-public' : 'ical', name: 'Calendario importado', ...identity });
+  storeSaveImported({ id, icalUrl, googleCalendarId, sourceType: googleCalendarId ? 'google-public' : 'ical', name: storeImportedCalendarName(identity), ...identity });
   return shareRefreshImportedCalendar(id, { silent: true });
 }
 
@@ -407,7 +407,7 @@ function renderImportedList() {
     html += imports.map(meta => `
       <div class="imported-item">
         <div class="imp-body">
-          <div class="imp-name">👁 ${escapeHtml(meta.name || 'Calendario importado')}${calItemCount(meta)}</div>
+          <div class="imp-name">👁 ${escapeHtml(storeImportedCalendarName(meta))}${calItemCount(meta)}</div>
           ${shareOwnerIdentityMarkup(meta)}
           <div class="imp-date">Actualizado: ${meta.lastSyncedAt ? new Date(meta.lastSyncedAt).toLocaleString('es') : 'pendiente'}</div>
         </div>

@@ -23,6 +23,25 @@ function storeOwnerIdentityText(source) {
   return ownerName || ownerEmail || '';
 }
 
+function storeOwnerEmailNickname(source) {
+  const { ownerEmail } = storeNormalizeOwnerIdentity(source);
+  if (!ownerEmail) return '';
+  return ownerEmail.split('@')[0] || ownerEmail;
+}
+
+function storeImportedCalendarName(source) {
+  const rawName = storeCleanIdentityValue(source?.name);
+  if (rawName && rawName !== 'Calendario importado') return rawName;
+
+  const { ownerName } = storeNormalizeOwnerIdentity(source);
+  if (ownerName) return `Calendario de ${ownerName}`;
+
+  const nickname = storeOwnerEmailNickname(source);
+  if (nickname) return `Calendario de ${nickname}`;
+
+  return 'Calendario importado';
+}
+
 function uuid() {
   return crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
     const r = Math.random() * 16 | 0;
@@ -72,7 +91,7 @@ function storeSaveImportedMap(imports) {
 }
 
 function storeGetImported() {
-  return Object.values(storeGetImportedMap()).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'));
+  return Object.values(storeGetImportedMap()).sort((a, b) => storeImportedCalendarName(a).localeCompare(storeImportedCalendarName(b), 'es'));
 }
 
 function storeGetImportedById(id) {
@@ -111,7 +130,7 @@ function storeBuildImportedSource(meta) {
   const identity = storeNormalizeOwnerIdentity(meta);
   return {
     id: meta.id,
-    name: meta.name || 'Calendario importado',
+    name: storeImportedCalendarName({ ...meta, ...identity }),
     readonly: true,
     sourceType: meta.sourceType || 'ical',
     icalUrl: meta.icalUrl,
