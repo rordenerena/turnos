@@ -161,6 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Restore last active tab
   const savedTab = localStorage.getItem('turnos_tab');
   if (savedTab) switchTab(savedTab);
+  renderImportedList();
 
   // Init Google Drive sync
   gdriveInit();
