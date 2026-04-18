@@ -328,24 +328,26 @@ async function gdriveUploadAndShare(cal) {
   return fileId;
 }
 
-/* Read a shared/imported Drive file: try auth first, then API Key for public files. */
+/* Read a shared/imported Drive file: API Key first (public), then auth fallback. */
 async function gdriveReadSharedCalendar(fileId) {
-  // 1. Try authenticated read (works if user owns the file or has explicit access)
-  if (gdriveToken) {
-    try {
-      return await gdriveReadFileAuthenticated(fileId);
-    } catch (e) {
-      // Fall through to API Key
-    }
-  }
-
-  // 2. Public read via API Key (works for files shared as "anyone with the link")
+  // 1. Public read via API Key (files shared as "anyone with the link")
   try {
     const url = `${gdriveGetFileMediaUrl(fileId)}&key=${GDRIVE_API_KEY}`;
     return await gdriveFetchCalendarJson(url, {}, 'API Key pública');
-  } catch (e) {
-    throw new Error(`${e.message}. Verificá que el dueño haya compartido el calendario con Google Drive conectado.`);
+  } catch (apiKeyError) {
+    console.warn('API Key read failed:', apiKeyError.message);
   }
+
+  // 2. Fallback: authenticated read (if user is logged in and has access)
+  if (gdriveToken) {
+    try {
+      return await gdriveReadFileAuthenticated(fileId);
+    } catch (authError) {
+      console.warn('Authenticated read failed:', authError.message);
+    }
+  }
+
+  throw new Error('No se pudo leer el calendario compartido. Verificá que el dueño haya compartido con Google Drive conectado.');
 }
 
 /* Debounced Drive upload with visual countdown */
