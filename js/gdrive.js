@@ -28,6 +28,7 @@ function gdriveRestoreSession() {
     gdriveToken = parsed.access_token;
     gapi.client.setToken({ access_token: gdriveToken });
     gdriveUpdateUI(true);
+    gdriveRestoreCalendars();
   } else {
     localStorage.removeItem('turnos_gdrive_token');
   }
@@ -56,6 +57,7 @@ function gdriveLogin() {
       gapi.client.setToken({ access_token: gdriveToken });
       gdriveUpdateUI(true);
       toast('Drive conectado ✓');
+      gdriveRestoreCalendars();
     },
   });
   client.requestAccessToken({ prompt: '' });
@@ -83,6 +85,42 @@ function gdriveUpdateUI(loggedIn) {
     btn.disabled = false;
     btn.onclick = gdriveLogin;
     if (disc) disc.classList.add('hidden');
+  }
+}
+
+/* Restore own calendars from Drive (after login or reinstall) */
+async function gdriveRestoreCalendars() {
+  if (!gdriveToken) return;
+  try {
+    const resp = await gapi.client.drive.files.list({
+      q: "name contains 'turnos-' and mimeType='application/json' and trashed=false",
+      fields: 'files(id,name)',
+      spaces: 'drive',
+    });
+    const files = resp.result.files || [];
+    let restored = 0;
+    for (const file of files) {
+      try {
+        const data = await gdriveReadPublic(file.id);
+        if (!data || !data.id) continue;
+        const local = storeGet(data.id);
+        if (!local || (data.updatedAt && data.updatedAt > (local.updatedAt || ''))) {
+          data.driveFileId = file.id;
+          if (!local) data.readonly = false; // own calendar restored
+          storeSave(local ? { ...local, ...data, readonly: local.readonly } : data);
+          restored++;
+        }
+      } catch {}
+    }
+    if (restored) {
+      const mine = storeGetMine();
+      if (mine.length) { currentCal = mine[0]; storeSetActive(currentCal.id); }
+      renderCalSelector();
+      calRender();
+      toast(`${restored} calendario(s) restaurado(s) desde Drive ✓`);
+    }
+  } catch (e) {
+    console.warn('Drive restore failed:', e);
   }
 }
 
