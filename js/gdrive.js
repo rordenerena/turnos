@@ -74,17 +74,34 @@ function gdriveLogout() {
 function gdriveUpdateUI(loggedIn) {
   const btn = document.getElementById('btn-gdrive');
   const disc = document.getElementById('btn-gdrive-disconnect');
+  const sync = document.getElementById('btn-gdrive-sync');
   if (!btn) return;
   if (loggedIn) {
     btn.textContent = '✅ Conectado a Google Drive';
     btn.disabled = true;
     btn.onclick = null;
     if (disc) disc.classList.remove('hidden');
+    if (sync) sync.classList.remove('hidden');
   } else {
     btn.textContent = '🔒 Conectar Google Drive';
     btn.disabled = false;
     btn.onclick = gdriveLogin;
     if (disc) disc.classList.add('hidden');
+    if (sync) sync.classList.add('hidden');
+  }
+}
+
+/* Manual sync: download from Drive then upload local changes */
+async function gdriveManualSync() {
+  if (!gdriveToken) { toast('Conectá Google Drive primero'); return; }
+  toast('Sincronizando...');
+  try {
+    await gdriveRestoreCalendars();
+    await gdriveFetchImported();
+    if (currentCal && !currentCal.readonly) await gdriveUploadAndShare(currentCal);
+    toast('Sincronización completa ✓');
+  } catch (e) {
+    toast('Error al sincronizar: ' + e.message);
   }
 }
 

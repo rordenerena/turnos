@@ -123,6 +123,7 @@
         <p class="hint">Sincronizá tu calendario con Drive como backup.</p>
         <button class="btn" id="btn-gdrive" onclick="gdriveLogin()">🔒 Conectar Google Drive</button>
         <button class="btn btn-sm btn-danger hidden" id="btn-gdrive-disconnect" onclick="gdriveLogout()" style="margin-top:6px">Desconectar</button>
+        <button class="btn btn-sm btn-accent hidden" id="btn-gdrive-sync" onclick="gdriveManualSync()" style="margin-top:6px">🔄 Sincronizar</button>
       </div>
       <div class="card">
         <button class="btn" onclick="updateSW()">Actualizar app</button>
@@ -185,7 +186,7 @@
       <span id="sync-icon">⏳</span>
     </div>
     <div id="toast" class="hidden"></div>
-    <p class="app-version">v18/04/2026 02:19</p>
+    <p class="app-version">v18/04/2026 02:21</p>
   </div>
 
   <script src="js/store.js"></script>
