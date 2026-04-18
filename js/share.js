@@ -94,6 +94,17 @@ function shareCheckUrl() {
   }
 }
 
+function calItemCount(c) {
+  const s = Object.keys(c.shifts || {}).length;
+  const e = Object.keys(c.events || {}).length;
+  const p = (c.patterns || []).length;
+  const parts = [];
+  if (s) parts.push(`${s} días`);
+  if (e) parts.push(`${e} eventos`);
+  if (p) parts.push(`${p} patrones`);
+  return parts.length ? ` (${parts.join(', ')})` : ' (vacío)';
+}
+
 function renderImportedList() {
   const el = document.getElementById('imported-list');
   const mine = storeGetMine();
@@ -106,7 +117,7 @@ function renderImportedList() {
     html += mine.map(c => `
     <div class="imported-item">
       <div>
-        <div class="imp-name">✏️ ${c.name}</div>
+        <div class="imp-name">✏️ ${c.name}${calItemCount(c)}</div>
         <div class="imp-date">Actualizado: ${new Date(c.updatedAt).toLocaleString('es')}</div>
       </div>
       <div style="display:flex;gap:4px">
@@ -124,7 +135,7 @@ function renderImportedList() {
     html += imported.map(c => `
     <div class="imported-item">
       <div>
-        <div class="imp-name">👁 ${c.name}</div>
+        <div class="imp-name">👁 ${c.name}${calItemCount(c)}</div>
         <div class="imp-date">Actualizado: ${new Date(c.updatedAt).toLocaleString('es')}</div>
       </div>
       <div style="display:flex;gap:4px">
