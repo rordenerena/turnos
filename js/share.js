@@ -149,7 +149,6 @@ function renderImportedList() {
 
 function removeOwn(id) {
   const mine = storeGetMine();
-  if (mine.length <= 1) { toast('No puedes eliminar el último calendario'); return; }
   if (!confirm('¿Eliminar este calendario?')) return;
   const cal = storeGet(id);
   if (gdriveToken && cal && cal.driveFileId) {
@@ -158,8 +157,14 @@ function removeOwn(id) {
     }).catch(() => {});
   }
   storeDelete(id);
+  // If that was the last own calendar, create a new empty one
+  let newCurrent = storeGetMine()[0];
+  if (!newCurrent) {
+    newCurrent = storeCreateCalendar('Mi calendario');
+    toast('Creado nuevo calendario vacío');
+  }
   if (currentCal && currentCal.id === id) {
-    currentCal = storeGetMine()[0];
+    currentCal = newCurrent;
     storeSetActive(currentCal.id);
   }
   renderImportedList();
