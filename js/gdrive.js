@@ -1,7 +1,7 @@
 /* gdrive.js — Google OAuth + Drive: upload own calendar, share publicly, read public files */
 
 const GDRIVE_CLIENT_ID = '743453800087-molu80v03v3ms24ovp194vscc53nr6aj.apps.googleusercontent.com';
-const GDRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
+const GDRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
 const GDRIVE_DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 
 let gdriveToken = null;
@@ -97,13 +97,14 @@ function gdriveUpdateUI(loggedIn) {
 /* Fetch user info from Google OAuth2 */
 async function gdriveFetchUser() {
   if (!gdriveToken) return;
+  const userEl = document.getElementById('gdrive-user');
+  if (userEl) userEl.classList.remove('hidden');
   try {
     const resp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${gdriveToken}` },
     });
     if (resp.ok) {
       const data = await resp.json();
-      const userEl = document.getElementById('gdrive-user');
       if (userEl) userEl.textContent = `👤 ${data.email}`;
     }
   } catch (e) {
