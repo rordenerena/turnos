@@ -86,19 +86,32 @@ async function gdriveUploadAndShare(cal) {
   const fileName = `turnos-${cal.id}.json`;
   let fileId = cal.driveFileId || null;
 
-  // Find existing file
+  // Verify saved fileId still exists
+  if (fileId) {
+    try {
+      await gapi.client.drive.files.get({ fileId, fields: 'id' });
+    } catch { fileId = null; }
+  }
+
+  // Find existing file (get most recent if duplicates)
   if (!fileId) {
     const resp = await gapi.client.drive.files.list({
       q: `name='${fileName}' and trashed=false`,
-      fields: 'files(id)',
+      fields: 'files(id,modifiedTime)',
+      orderBy: 'modifiedTime desc',
       spaces: 'drive',
     });
-    if (resp.result.files && resp.result.files.length) fileId = resp.result.files[0].id;
+    if (resp.result.files && resp.result.files.length) {
+      fileId = resp.result.files[0].id;
+      // Trash duplicates
+      for (let i = 1; i < resp.result.files.length; i++) {
+        gapi.client.drive.files.update({ fileId: resp.result.files[i].id, resource: { trashed: true } }).catch(() => {});
+      }
+    }
   }
 
   if (fileId) {
-    // Update
-    const r = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${gdriveToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
