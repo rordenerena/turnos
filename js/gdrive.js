@@ -91,7 +91,7 @@ function gdriveUpdateUI(loggedIn) {
 
 /* Manual sync: download from Drive then upload local changes */
 async function gdriveManualSync() {
-  if (!gdriveToken) { toast('Conectá Google Drive primero'); return; }
+  if (!gdriveToken) { toast('Conecta Google Drive primero'); return; }
   toast('Sincronizando...');
   try {
     await gdriveRestoreCalendars();

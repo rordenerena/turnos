@@ -73,9 +73,9 @@ function selectCalendar(id) {
 }
 
 function saveMyName() {
-  if (!currentCal || currentCal.readonly) { toast('No podés renombrar un calendario importado'); return; }
+  if (!currentCal || currentCal.readonly) { toast('No puedes renombrar un calendario importado'); return; }
   const name = document.getElementById('my-cal-name').value.trim();
-  if (!name) { toast('Escribí un nombre'); return; }
+  if (!name) { toast('Escribe un nombre'); return; }
   currentCal.name = name;
   storeSave(currentCal);
   renderCalSelector();
@@ -252,7 +252,7 @@ document.addEventListener('onboard', () => {
 
 function onboardSubmit() {
   const name = document.getElementById('onboard-name').value.trim();
-  if (!name) { toast('Escribí tu nombre'); return; }
+  if (!name) { toast('Escribe tu nombre'); return; }
   try { localStorage.setItem('pendingName', name); } catch {}
   document.getElementById('onboard').classList.add('hidden');
 

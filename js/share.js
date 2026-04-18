@@ -24,7 +24,7 @@ function shareDecompress(b64) {
 }
 
 async function shareGenerate() {
-  if (!currentCal || currentCal.readonly) { toast('Seleccioná tu propio calendario'); return; }
+  if (!currentCal || currentCal.readonly) { toast('Selecciona tu propio calendario'); return; }
   try {
     // Upload to Drive if connected
     if (gdriveToken) {
@@ -41,7 +41,7 @@ async function shareGenerate() {
     toast(gdriveToken ? 'QR generado con sync ✓' : 'QR generado ✓');
     document.getElementById('share-sync-hint').textContent = currentCal.driveFileId
       ? '🟢 Este QR incluye sync con Google Drive'
-      : '⚪ Sin sync — conectá Google Drive en ⚙️ para activarlo';
+      : '⚪ Sin sync — conecta Google Drive en ⚙️ para activarlo';
   } catch (e) {
     toast('Error al generar: ' + e.message);
   }
@@ -54,7 +54,7 @@ function shareCopyLink() {
 
 async function shareNative() {
   const url = document.getElementById('share-url').textContent;
-  if (!url) { toast('Generá el link primero'); return; }
+  if (!url) { toast('Genera el link primero'); return; }
   if (!navigator.share) {
     toast('Compartir no disponible en este dispositivo');
     return;
@@ -149,7 +149,7 @@ function renderImportedList() {
 
 function removeOwn(id) {
   const mine = storeGetMine();
-  if (mine.length <= 1) { toast('No podés eliminar el último calendario'); return; }
+  if (mine.length <= 1) { toast('No puedes eliminar el último calendario'); return; }
   if (!confirm('¿Eliminar este calendario?')) return;
   const cal = storeGet(id);
   if (gdriveToken && cal && cal.driveFileId) {
@@ -170,7 +170,7 @@ function removeOwn(id) {
 async function refreshFromDrive(calId) {
   const cal = storeGet(calId);
   if (!cal || !cal.driveFileId) { toast('Sin enlace de Drive'); return; }
-  if (!gdriveToken) { toast('Conectá Google Drive en ⚙️ primero'); return; }
+  if (!gdriveToken) { toast('Conecta Google Drive en ⚙️ primero'); return; }
   try {
     toast('Actualizando...');
     const data = await gdriveReadPublic(cal.driveFileId);
