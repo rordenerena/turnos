@@ -1,6 +1,7 @@
 /* gdrive.js — Google OAuth + Drive: upload own calendars, restore with auth, refresh shared files via browser-safe paths */
 
 const GDRIVE_CLIENT_ID = '743453800087-molu80v03v3ms24ovp194vscc53nr6aj.apps.googleusercontent.com';
+const GDRIVE_API_KEY = 'AIzaSyBi2b2bz4XuROg0HKkFGSTeuMPjNOBIJk8';
 const GDRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
 const GDRIVE_DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
 
@@ -327,25 +328,23 @@ async function gdriveUploadAndShare(cal) {
   return fileId;
 }
 
-/* Read a shared/imported Drive file with auth when available, otherwise via proxy fallback. */
+/* Read a shared/imported Drive file: try auth first, then API Key for public files. */
 async function gdriveReadSharedCalendar(fileId) {
-  let authError = null;
-
+  // 1. Try authenticated read (works if user owns the file or has explicit access)
   if (gdriveToken) {
     try {
       return await gdriveReadFileAuthenticated(fileId);
     } catch (e) {
-      authError = e;
+      // Fall through to API Key
     }
   }
 
+  // 2. Public read via API Key (works for files shared as "anyone with the link")
   try {
-    const apiUrl = gdriveGetFileMediaUrl(fileId);
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`;
-    return await gdriveFetchCalendarJson(proxyUrl, {}, 'proxy público de compatibilidad');
+    const url = `${gdriveGetFileMediaUrl(fileId)}&key=${GDRIVE_API_KEY}`;
+    return await gdriveFetchCalendarJson(url, {}, 'API Key pública');
   } catch (e) {
-    const message = authError?.message || e?.message || 'No se pudo leer el archivo compartido';
-    throw new Error(`${message}. En una app 100% estática la actualización pública desde Drive puede requerir un proxy compatible o que el dueño vuelva a compartir el archivo.`);
+    throw new Error(`${e.message}. Verificá que el dueño haya compartido el calendario con Google Drive conectado.`);
   }
 }
 
