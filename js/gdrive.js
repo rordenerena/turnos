@@ -96,7 +96,11 @@ async function gdriveManualSync() {
   try {
     await gdriveRestoreCalendars();
     await gdriveFetchImported();
-    if (currentCal && !currentCal.readonly) await gdriveUploadAndShare(currentCal);
+    // Upload all calendars (own + imported as backup)
+    const all = Object.values(storeGetAll());
+    for (const cal of all) {
+      await gdriveUploadAndShare(cal);
+    }
     toast('Sincronización completa ✓');
   } catch (e) {
     toast('Error al sincronizar: ' + e.message);
@@ -121,9 +125,6 @@ async function gdriveRestoreCalendars() {
         data.driveFileId = file.id;
         const local = storeGet(data.id);
         if (!local) {
-          // Only restore as own if it's not someone else's calendar
-          // (if it has readonly=true in the data, skip it)
-          if (data.readonly) continue;
           // New calendar from Drive — check if there's an empty local with same name to replace
           const mine = storeGetMine();
           const emptyDupe = mine.find(c => c.name === data.name && !c.driveFileId && Object.keys(c.shifts || {}).length === 0 && (c.patterns || []).length === 0);
@@ -188,7 +189,7 @@ async function gdriveGetFolder() {
 async function gdriveUploadAndShare(cal) {
   if (!gdriveToken) throw new Error('No conectado a Drive');
   const folderId = await gdriveGetFolder();
-  const payload = { id: cal.id, name: cal.name, shifts: cal.shifts, events: cal.events, patterns: cal.patterns, updatedAt: cal.updatedAt };
+  const payload = { id: cal.id, name: cal.name, shifts: cal.shifts, events: cal.events, patterns: cal.patterns, updatedAt: cal.updatedAt, readonly: !!cal.readonly, driveFileId: cal.driveFileId || null };
   const fileName = `turnos-${cal.id}.json`;
   let fileId = cal.driveFileId || null;
 
