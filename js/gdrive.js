@@ -274,7 +274,8 @@ async function gdriveUploadAndShare(cal) {
 /* Read a public Drive file using CORS proxy */
 async function gdriveReadPublic(fileId) {
   const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
-  const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+  // Try allorigins proxy
+  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
   try {
     const resp = await fetch(proxyUrl);
     if (!resp.ok) {
@@ -284,7 +285,7 @@ async function gdriveReadPublic(fileId) {
     return resp.json();
   } catch (e) {
     console.warn('Proxy fetch failed:', e.message);
-    throw new Error('Error al descargar. Reimportá el QR.');
+    throw new Error('Error al conectar. Reimportá el QR.');
   }
 }
 
