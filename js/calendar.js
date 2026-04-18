@@ -38,11 +38,15 @@ function calRender() {
     html += `<div class="cal-day${ds === todayStr ? ' today' : ''}" onclick="dayClick('${ds}')">`;
     html += `<div class="day-num">${d}</div>`;
     if (shifts.length) {
+      const shiftOrder = { M: 0, T: 1, N: 2, R: 3, L: 4 };
+      shifts.sort((a, b) => (shiftOrder[a.type || a] ?? 5) - (shiftOrder[b.type || b] ?? 5));
+      html += '<div class="day-shifts">';
       shifts.forEach(s => {
         const t = s.type || s;
         const n = s.note ? ` <small>${s.note}</small>` : '';
         html += `<div class="day-shift s-${t}">${t}${n}</div>`;
       });
+      html += '</div>';
     }
     if (evts.length) html += `<div class="day-events"><span class="event-dot"></span>${evts.length > 1 ? evts.length : evts[0].text.substring(0, 10)}</div>`;
     html += '</div>';
