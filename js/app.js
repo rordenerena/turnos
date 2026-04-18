@@ -95,8 +95,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Init Google Drive sync
   gdriveInit();
 
-  // Fetch updates for imported calendars from Drive
-  gdriveFetchImported();
+  // Fetch updates for imported calendars from Drive (delayed to avoid hammering on reloads)
+  setTimeout(gdriveFetchImported, 5000);
 
   // Register SW
   if ('serviceWorker' in navigator) {
