@@ -99,6 +99,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 #modal-shift label,#modal-events label{font-weight:600;font-size:.85rem;display:block;margin-bottom:6px}
 #modal-shift{margin-bottom:12px}
 #modal-shift-buttons{display:flex;flex-wrap:wrap;gap:4px}
+#modal-shift-notes{min-height:36px}
 .shift-note-row{display:flex;align-items:center;gap:6px;margin-top:6px}
 .shift-note-row .seq-item{min-width:28px;text-align:center}
 .shift-note-row input{flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:.8rem;background:var(--card);color:var(--text)}
