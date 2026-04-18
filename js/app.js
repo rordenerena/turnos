@@ -64,6 +64,32 @@ function saveMyName() {
   toast('Nombre guardado ✓');
 }
 
+async function deleteEverything() {
+  if (!confirm('¿Borrar TODOS los calendarios de localStorage y Google Drive?')) return;
+  if (!confirm('⚠️ Esta acción es IRREVERSIBLE. ¿Seguro?')) return;
+  // Delete all Drive files
+  if (gdriveToken) {
+    try {
+      const resp = await gapi.client.drive.files.list({
+        q: "name contains 'turnos-' and mimeType='application/json' and trashed=false",
+        fields: 'files(id)',
+        spaces: 'drive',
+      });
+      for (const f of (resp.result.files || [])) {
+        await gapi.client.drive.files.delete({ fileId: f.id }).catch(() => {});
+      }
+    } catch {}
+  }
+  // Clear localStorage
+  localStorage.removeItem(STORE_KEY);
+  localStorage.removeItem(ACTIVE_KEY);
+  localStorage.removeItem('turnos_gdrive_token');
+  localStorage.removeItem('pendingName');
+  currentCal = null;
+  toast('Todo eliminado');
+  location.reload();
+}
+
 function deleteCurrentCalendar() {
   if (!currentCal) return;
   if (!confirm(`¿Eliminar "${currentCal.name}"?`)) return;
