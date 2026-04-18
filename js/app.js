@@ -67,6 +67,9 @@ function saveMyName() {
 function deleteCurrentCalendar() {
   if (!currentCal) return;
   if (!confirm(`¿Eliminar "${currentCal.name}"?`)) return;
+  if (gdriveToken && currentCal.driveFileId) {
+    gapi.client.drive.files.update({ fileId: currentCal.driveFileId, resource: { trashed: true } }).catch(() => {});
+  }
   storeDelete(currentCal.id);
   const own = storeEnsureOwn();
   currentCal = own;
