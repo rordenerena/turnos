@@ -138,7 +138,10 @@
       <div id="modal">
         <div id="modal-header">
           <h3 id="modal-date"></h3>
-          <button class="btn btn-sm" onclick="modalClose()">✕</button>
+          <button id="modal-close-btn" class="btn btn-sm modal-close-btn" type="button" onclick="modalClose()" aria-label="Cerrar diálogo">
+            <span id="modal-close-icon">✕</span>
+            <span id="modal-close-spinner" class="modal-close-spinner hidden" aria-hidden="true"></span>
+          </button>
         </div>
         <div id="modal-body">
           <div id="modal-shift">
@@ -185,7 +188,7 @@
       <span id="sync-icon">⏳</span>
     </div>
     <div id="toast" class="hidden"></div>
-    <p class="app-version">v18/04/2026 21:05</p>
+    <p class="app-version">v18/04/2026 20:54</p>
   </div>
 
   <script src="js/store.js"></script>

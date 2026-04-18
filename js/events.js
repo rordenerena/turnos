@@ -48,6 +48,18 @@ function modalResetDraft() {
   modalDayDraft = null;
   const input = document.getElementById('event-text');
   if (input) input.value = '';
+  modalRenderCloseButton();
+}
+
+function modalRenderCloseButton() {
+  const button = document.getElementById('modal-close-btn');
+  const icon = document.getElementById('modal-close-icon');
+  const spinner = document.getElementById('modal-close-spinner');
+  if (!button || !icon || !spinner) return;
+  const saving = !!modalDayDraft?.saving;
+  button.disabled = saving;
+  icon.classList.toggle('hidden', saving);
+  spinner.classList.toggle('hidden', !saving);
 }
 
 function modalOpen(ds) {
@@ -69,6 +81,7 @@ function modalOpen(ds) {
   document.getElementById('modal-date').textContent = formatDateLabel(ds);
   document.getElementById('modal-shift-buttons').classList.toggle('hidden', readonly);
   document.getElementById('modal-add-event').classList.toggle('hidden', readonly);
+  modalRenderCloseButton();
   modalRenderShift();
   modalRenderEvents();
 }
@@ -78,10 +91,12 @@ async function modalClose(e) {
   if (modalDayDraft?.saving) return;
   if (currentCal && !currentCal.readonly && modalDraftIsDirty()) {
     modalDayDraft.saving = true;
+    modalRenderCloseButton();
     try {
       await googleCalendarReplaceDayContent(selectedDate, modalDayDraft.current.shifts, modalDayDraft.current.events);
     } catch (error) {
       modalDayDraft.saving = false;
+      modalRenderCloseButton();
       toast(`No se pudo guardar el día: ${error.message}`);
       return;
     }

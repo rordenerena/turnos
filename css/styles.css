@@ -97,6 +97,10 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 #modal{background:var(--card);border-radius:12px;width:100%;max-width:400px;padding:16px;max-height:80vh;overflow-y:auto;color:var(--text)}
 #modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 #modal-header h3{font-size:1rem}
+.modal-close-btn{min-width:36px;min-height:32px;display:inline-flex;align-items:center;justify-content:center}
+.modal-close-btn[disabled]{opacity:.7;cursor:wait}
+.modal-close-spinner{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:modal-spin .7s linear infinite}
+@keyframes modal-spin{to{transform:rotate(360deg)}}
 #modal-shift label,#modal-events label{font-weight:600;font-size:.85rem;display:block;margin-bottom:6px}
 #modal-shift{margin-bottom:12px}
 #modal-shift-buttons{display:flex;flex-wrap:wrap;gap:4px}
