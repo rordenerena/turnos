@@ -40,9 +40,9 @@ function switchTab(tab) {
   }
   if (tab === 'patterns') {
     renderPatternsList();
-    // Initialize month input to current calendar view month
-    const monthInput = document.getElementById('pattern-month');
-    monthInput.value = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
+    const today = new Date();
+    document.getElementById('pattern-start').value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    document.getElementById('pattern-month').value = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
   }
   if (tab === 'settings') {
     document.getElementById('my-cal-name').value = currentCal && !currentCal.readonly ? currentCal.name : '';
