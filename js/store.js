@@ -73,12 +73,12 @@ function storeImportCalendar(data) {
   const cals = storeGetAll();
   const existing = cals[data.id];
   if (existing) {
-    // Update existing imported calendar
+    // Update existing imported calendar with current timestamp
     existing.name = data.name;
     existing.shifts = data.shifts;
     existing.events = data.events;
     existing.patterns = data.patterns;
-    existing.updatedAt = data.updatedAt || new Date().toISOString();
+    existing.updatedAt = new Date().toISOString();
     existing.readonly = true;
     if (data.driveFileId) existing.driveFileId = data.driveFileId;
     storeSave(existing);
