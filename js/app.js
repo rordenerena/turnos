@@ -2,10 +2,18 @@
 
 function toast(msg) {
   const el = document.getElementById('toast');
-  el.textContent = msg;
+  el.innerHTML = msg;
   el.classList.remove('hidden');
   clearTimeout(el._t);
   el._t = setTimeout(() => el.classList.add('hidden'), 3000);
+}
+
+function showUpdateToast() {
+  const el = document.getElementById('toast');
+  el.innerHTML = '🆕 Nueva versión disponible <button class="btn btn-sm btn-primary" style="margin-left:8px" onclick="location.reload()">Actualizar</button>';
+  el.classList.remove('hidden');
+  clearTimeout(el._t);
+  // No auto-hide — persistent until user acts
 }
 
 function switchTab(tab) {
@@ -98,9 +106,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // Fetch updates for imported calendars from Drive (delayed to avoid hammering on reloads)
   setTimeout(gdriveFetchImported, 5000);
 
-  // Register SW
+  // Register SW + detect updates
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      setInterval(() => reg.update(), 5 * 60 * 1000);
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        newSW.addEventListener('statechange', () => {
+          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+            showUpdateToast();
+          }
+        });
+      });
+    }).catch(() => {});
   }
 
   // Handle links when PWA is already open (launch_handler: focus-existing)
