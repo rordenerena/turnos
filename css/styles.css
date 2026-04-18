@@ -25,7 +25,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .btn-primary{background:var(--primary);color:#fff;border-color:var(--primary)}
 .btn-accent{background:#bbdefb;color:#333;border-color:#bbdefb}
 .btn-sm{padding:4px 10px;font-size:.8rem}
-.btn-danger{background:#e53935;color:#fff;border-color:#e53935}
+.btn-danger{background:tomato;color:#fff;border-color:tomato}
 .shift-M{background:var(--shift-m);color:#fff;border-color:var(--shift-m)}
 .shift-T{background:var(--shift-t);color:#fff;border-color:var(--shift-t)}
 .shift-N{background:var(--shift-n);color:#fff;border-color:var(--shift-n)}
