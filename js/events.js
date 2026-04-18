@@ -48,18 +48,27 @@ function modalResetDraft() {
   modalDayDraft = null;
   const input = document.getElementById('event-text');
   if (input) input.value = '';
-  modalRenderCloseButton();
+  modalRenderActionButtons();
 }
 
-function modalRenderCloseButton() {
-  const button = document.getElementById('modal-close-btn');
-  const icon = document.getElementById('modal-close-icon');
-  const spinner = document.getElementById('modal-close-spinner');
-  if (!button || !icon || !spinner) return;
+function modalRenderActionButtons() {
+  const saveButton = document.getElementById('modal-save-btn');
+  const cancelButton = document.getElementById('modal-cancel-btn');
+  const icon = document.getElementById('modal-save-icon');
+  const spinner = document.getElementById('modal-save-spinner');
+  if (!saveButton || !cancelButton || !icon || !spinner) return;
   const saving = !!modalDayDraft?.saving;
-  button.disabled = saving;
+  saveButton.disabled = saving;
+  cancelButton.disabled = saving;
   icon.classList.toggle('hidden', saving);
   spinner.classList.toggle('hidden', !saving);
+}
+
+function modalFinalizeClose() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+  modalResetDraft();
+  calRender();
+  selectedDate = null;
 }
 
 function modalOpen(ds) {
@@ -81,30 +90,32 @@ function modalOpen(ds) {
   document.getElementById('modal-date').textContent = formatDateLabel(ds);
   document.getElementById('modal-shift-buttons').classList.toggle('hidden', readonly);
   document.getElementById('modal-add-event').classList.toggle('hidden', readonly);
-  modalRenderCloseButton();
+  modalRenderActionButtons();
   modalRenderShift();
   modalRenderEvents();
 }
 
 async function modalClose(e) {
-  if (e && e.target && e.target.id !== 'modal-overlay') return;
   if (modalDayDraft?.saving) return;
   if (currentCal && !currentCal.readonly && modalDraftIsDirty()) {
     modalDayDraft.saving = true;
-    modalRenderCloseButton();
+    modalRenderActionButtons();
     try {
       await googleCalendarReplaceDayContent(selectedDate, modalDayDraft.current.shifts, modalDayDraft.current.events);
     } catch (error) {
       modalDayDraft.saving = false;
-      modalRenderCloseButton();
+      modalRenderActionButtons();
       toast(`No se pudo guardar el día: ${error.message}`);
       return;
     }
   }
-  document.getElementById('modal-overlay').classList.add('hidden');
-  modalResetDraft();
-  calRender();
-  selectedDate = null;
+  modalFinalizeClose();
+}
+
+function modalCancel(e) {
+  if (e && e.target && e.target.id !== 'modal-overlay') return;
+  if (modalDayDraft?.saving) return;
+  modalFinalizeClose();
 }
 
 function modalRenderShift() {
