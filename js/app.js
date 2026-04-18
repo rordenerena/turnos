@@ -230,16 +230,13 @@ function scanClose(e) {
 }
 
 function updateSW() {
-  if (!('serviceWorker' in navigator)) { toast('Service Worker no disponible'); return; }
-  navigator.serviceWorker.getRegistrations().then(regs => {
-    for (const reg of regs) {
-      reg.update().then(() => {
-        location.reload();
-      }).catch(() => {
-        location.reload();
-      });
-    }
-  });
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      for (const reg of regs) reg.update().catch(() => {});
+    });
+  }
+  toast('Actualizando...');
+  setTimeout(() => location.reload(), 500);
 }
 
 /* Onboarding */
