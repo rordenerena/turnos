@@ -121,6 +121,9 @@ async function gdriveRestoreCalendars() {
         data.driveFileId = file.id;
         const local = storeGet(data.id);
         if (!local) {
+          // Only restore as own if it's not someone else's calendar
+          // (if it has readonly=true in the data, skip it)
+          if (data.readonly) continue;
           // New calendar from Drive — check if there's an empty local with same name to replace
           const mine = storeGetMine();
           const emptyDupe = mine.find(c => c.name === data.name && !c.driveFileId && Object.keys(c.shifts || {}).length === 0 && (c.patterns || []).length === 0);
