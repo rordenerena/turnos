@@ -202,7 +202,14 @@
 
     <div id="fab-actions" class="fab-actions hidden" aria-label="Acciones rápidas">
       <button class="fab-mini" type="button" onclick="fabSelectAction('patterns')">
-        <span class="fab-mini-icon" aria-hidden="true">🔁</span>
+        <span class="fab-mini-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 2l4 4-4 4"></path>
+            <path d="M3 11V9a3 3 0 0 1 3-3h15"></path>
+            <path d="M7 22l-4-4 4-4"></path>
+            <path d="M21 13v2a3 3 0 0 1-3 3H3"></path>
+          </svg>
+        </span>
         <span class="fab-mini-label">Patrones</span>
       </button>
       <button class="fab-mini" type="button" onclick="fabSelectAction('shared')">
@@ -214,7 +221,16 @@
         <span class="fab-mini-label">Configuración</span>
       </button>
       <button class="fab-mini" type="button" onclick="fabSelectAction('scan')">
-        <span class="fab-mini-icon" aria-hidden="true">📷</span>
+        <span class="fab-mini-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+            <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+            <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+            <rect x="16" y="16" width="3" height="3" rx="0.5"></rect>
+            <line x1="14" y1="14" x2="14" y2="17"></line>
+            <line x1="17" y1="14" x2="21" y2="14"></line>
+          </svg>
+        </span>
         <span class="fab-mini-label">Escanear QR</span>
       </button>
     </div>
@@ -246,7 +262,7 @@
       <span id="sync-icon">⏳</span>
     </div>
     <div id="toast" class="hidden"></div>
-    <p class="app-version">v21/04/2026 00:07</p>
+    <p class="app-version">v21/04/2026 00:12</p>
   </div>
 
   <script src="js/store.js"></script>

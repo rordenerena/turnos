@@ -160,6 +160,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .fab-actions{position:fixed;right:12px;bottom:calc(92px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column-reverse;gap:10px;z-index:139;align-items:flex-end}
 .fab-mini{display:inline-flex;align-items:center;gap:10px;border:none;border-radius:999px;background:var(--card);color:var(--text);border:1px solid var(--border);padding:10px 14px;box-shadow:0 3px 8px rgba(0,0,0,.18);cursor:pointer;font-size:.85rem}
 .fab-mini-icon{width:20px;text-align:center;font-size:1rem}
+.fab-mini-icon svg{width:20px;height:20px;display:block}
 .fab-mini-label{font-weight:600}
 
 /* Scanner */
