@@ -73,7 +73,7 @@ async function shareNative() {
   try {
     await navigator.share({
       title: 'Calendario de Turnos',
-      text: 'Te comparto mi calendario de turnos.',
+      text: 'Te comparto un calendario de turnos.',
       url,
     });
   } catch (error) {
@@ -439,15 +439,18 @@ function calItemCount(meta) {
 
 function renderImportedList() {
   const el = document.getElementById('imported-list');
+  const title = document.getElementById('imported-list-title');
   const imports = storeGetImported();
   let html = '';
+
+  if (title) title.classList.toggle('hidden', imports.length === 0);
 
   if (googleOwnerCalendar) {
     html += `
       <div class="imported-item">
         <div class="imp-body">
-          <div class="imp-name">✏️ Mi calendario</div>
-          <div class="imp-date">Feed público:</div>
+          <div class="imp-name">Calendario compartido</div>
+          <div class="imp-date">Enlace público:</div>
           <div class="imp-url">${escapeHtml(googleOwnerCalendar.publicIcalUrl)}</div>
         </div>
         <div class="imp-actions">
@@ -458,7 +461,6 @@ function renderImportedList() {
   }
 
   if (imports.length) {
-    html += '<h3 style="margin:12px 0 4px">Calendarios importados</h3>';
     html += imports.map(meta => `
       <div class="imported-item">
         <div class="imp-body">
@@ -467,8 +469,8 @@ function renderImportedList() {
           <div class="imp-date">Actualizado: ${meta.lastSyncedAt ? new Date(meta.lastSyncedAt).toLocaleString('es') : 'pendiente'}</div>
         </div>
         <div class="imp-actions">
-          <button class="btn btn-sm" onclick="renameImported('${meta.id}')" title="Renombrar calendario importado">✏️</button>
-          <button class="btn btn-sm" onclick="refreshImported('${meta.id}')">🔄</button>
+          <button class="btn btn-sm icon-button" onclick="renameImported('${meta.id}')" title="Renombrar calendario importado" aria-label="Renombrar calendario importado">${appIconSpan('edit')}</button>
+          <button class="btn btn-sm icon-button" onclick="refreshImported('${meta.id}')" title="Actualizar calendario importado" aria-label="Actualizar calendario importado">${appIconSpan('refresh')}</button>
           <button class="btn btn-sm btn-primary" onclick="selectCalendar('${meta.id}');switchTab('calendar')">Ver</button>
           <button class="btn btn-sm btn-danger" onclick="removeImported('${meta.id}')">✕</button>
         </div>

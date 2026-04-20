@@ -7,7 +7,8 @@ const HEADER_VIEW_CONFIG = {
   calendar: { title: '📅 Turnos', button: 'menu' },
   patterns: { title: 'Patrones', button: 'menu' },
   shared: { title: 'Compartir', button: 'menu' },
-  settings: { title: 'Configuración', button: 'menu' }
+  settings: { title: 'Configuración', button: 'menu' },
+  scan: { title: 'Escanear QR', button: 'menu' }
 };
 let primaryDrawerOpen = false;
 
@@ -96,6 +97,21 @@ function syncOwnerActionCopy() {
   if (shareCopy) shareCopy.textContent = '';
 }
 
+function appIcon(name) {
+  const icons = {
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg>',
+    edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path></svg>',
+    refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path></svg>',
+    success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>',
+    warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>'
+  };
+  return icons[name] || '';
+}
+
+function appIconSpan(name) {
+  return `<span class="icon-inline" aria-hidden="true">${appIcon(name)}</span>`;
+}
+
 function headerButtonIconMarkup(mode) {
   if (mode === 'back') {
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>';
@@ -158,10 +174,6 @@ function togglePrimaryDrawer() {
 
 function openPrimaryMenuAction(action) {
   closePrimaryDrawer();
-  if (action === 'scan') {
-    scanOpen();
-    return;
-  }
   switchTab(action);
 }
 
@@ -184,8 +196,9 @@ function switchTab(tab) {
     document.getElementById('theme-select').value = localStorage.getItem('turnos_theme') || 'auto';
     const sessionIdentity = googleProfile ? storeOwnerIdentityText({ ownerName: googleProfile.name, ownerEmail: googleProfile.email }) : '';
     document.getElementById('google-user-name').textContent = sessionIdentity ? `👤 ${sessionIdentity}` : 'Sin sesión';
-    document.getElementById('owner-feed-url').textContent = googleOwnerCalendar?.publicIcalUrl || 'Pendiente';
   }
+  if (tab === 'scan') startQrScanner();
+  else stopQrScanner();
   syncOwnerActionCopy();
   syncHeaderState(tab);
 }
@@ -348,35 +361,84 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 let _scanner = null;
-function scanOpen() {
-  closePrimaryDrawer();
-  document.getElementById('scan-overlay').classList.remove('hidden');
-  _scanner = new Html5Qrcode('scan-reader');
-  _scanner.start(
-    { facingMode: 'environment' },
-    { fps: 10, qrbox: { width: 250, height: 250 } },
-    async text => {
-      scanClose();
-      try {
-        const url = new URL(text);
-        if (url.hash.startsWith('#ical=')) {
-          location.hash = url.hash;
-          await shareCheckUrl();
-        } else {
-          toast('QR no válido');
-        }
-      } catch {
-        toast('QR no válido');
-      }
-    }
-  ).catch(() => toast('No se pudo acceder a la cámara'));
+let _scannerState = 'idle';
+let _scannerSession = 0;
+
+async function stopQrScanner() {
+  _scannerSession += 1;
+  const scanner = _scanner;
+  _scanner = null;
+  if (!scanner) {
+    _scannerState = 'idle';
+    return;
+  }
+  _scannerState = 'stopping';
+  try {
+    await scanner.stop();
+  } catch {}
+  try {
+    await scanner.clear();
+  } catch {}
+  _scannerState = 'idle';
 }
 
-function scanClose(e) {
-  if (e && e.target && e.target.id !== 'scan-overlay') return;
-  document.getElementById('scan-overlay').classList.add('hidden');
-  if (_scanner) _scanner.stop().catch(() => {});
-  _scanner = null;
+async function handleScanResult(text) {
+  await stopQrScanner();
+  try {
+    const url = new URL(text);
+    if (!url.hash.startsWith('#ical=')) {
+      toast('QR no válido');
+      if (currentVisibleTab() === 'scan') startQrScanner();
+      return;
+    }
+    location.hash = url.hash;
+    await shareCheckUrl();
+  } catch (error) {
+    const message = error?.message && error instanceof Error ? `No se pudo importar el iCal: ${error.message}` : 'QR no válido';
+    toast(message);
+    if (currentVisibleTab() === 'scan') startQrScanner();
+  }
+}
+
+async function startQrScanner() {
+  if (_scannerState === 'starting' || _scannerState === 'running') return;
+  if (typeof Html5Qrcode !== 'function') {
+    toast('Lector QR no disponible');
+    return;
+  }
+
+  const session = ++_scannerSession;
+  const reader = document.getElementById('scan-reader');
+  if (!reader) return;
+
+  reader.innerHTML = '';
+  const scanner = new Html5Qrcode('scan-reader');
+  _scanner = scanner;
+  _scannerState = 'starting';
+
+  try {
+    await scanner.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      async text => {
+        if (session !== _scannerSession) return;
+        await handleScanResult(text);
+      }
+    );
+    if (session !== _scannerSession || currentVisibleTab() !== 'scan') {
+      await stopQrScanner();
+      return;
+    }
+    _scannerState = 'running';
+  } catch {
+    if (session !== _scannerSession || currentVisibleTab() !== 'scan') return;
+    _scanner = null;
+    _scannerState = 'idle';
+    try {
+      await scanner.clear();
+    } catch {}
+    toast('No se pudo acceder a la cámara');
+  }
 }
 
 function updateSW() {

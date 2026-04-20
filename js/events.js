@@ -58,8 +58,11 @@ function modalRenderActionButtons() {
   const spinner = document.getElementById('modal-save-spinner');
   if (!saveButton || !cancelButton || !icon || !spinner) return;
   const saving = !!modalDayDraft?.saving;
+  const readonly = !!(currentCal && currentCal.readonly);
   saveButton.disabled = saving;
   cancelButton.disabled = saving;
+  saveButton.classList.toggle('hidden', readonly);
+  cancelButton.setAttribute('aria-label', readonly ? 'Cerrar' : 'Cancelar edición');
   icon.classList.toggle('hidden', saving);
   spinner.classList.toggle('hidden', !saving);
 }

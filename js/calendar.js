@@ -24,9 +24,9 @@ function readonlyBannerUpdateRefreshState(calendarId, status) {
 
 function readonlyBannerRefreshMarkup(status) {
   if (status === 'refreshing') return '<span class="readonly-banner-spinner" aria-hidden="true"></span>';
-  if (status === 'success') return '<span aria-hidden="true">✓</span>';
-  if (status === 'error') return '<span aria-hidden="true">⚠</span>';
-  return '<span aria-hidden="true">🔄</span>';
+  if (status === 'success') return appIconSpan('success');
+  if (status === 'error') return appIconSpan('warning');
+  return appIconSpan('refresh');
 }
 
 async function readonlyBannerRefreshCurrent(event) {
@@ -135,14 +135,14 @@ function calRender() {
       <span class="readonly-banner-actions">
         <button
           type="button"
-          class="btn btn-sm readonly-banner-refresh"
+          class="btn btn-sm readonly-banner-refresh icon-button"
           onclick="readonlyBannerRenameCurrent(event)"
           aria-label="Renombrar calendario importado"
           title="Renombrar calendario importado"
-        >✏️</button>
+        >${appIconSpan('edit')}</button>
         <button
           type="button"
-          class="btn btn-sm readonly-banner-refresh"
+          class="btn btn-sm readonly-banner-refresh icon-button"
           data-state="${refreshState}"
           onclick="readonlyBannerRefreshCurrent(event)"
           aria-label="Actualizar calendario importado"
