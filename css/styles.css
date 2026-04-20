@@ -60,8 +60,11 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 
 /* Tabs */
 #tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin:12px 12px 0;overflow-x:auto}
-.calendar-tab{background:none;border:none;padding:10px 8px;cursor:pointer;font-size:.95rem;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--muted);touch-action:manipulation;flex:1;text-align:center;white-space:nowrap}
+.calendar-tab-item{display:flex;align-items:center;gap:2px;flex:1;min-width:0}
+.calendar-tab{background:none;border:none;padding:10px 8px;cursor:pointer;font-size:.95rem;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--muted);touch-action:manipulation;flex:1;text-align:center;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .calendar-tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+.calendar-tab-info{flex-shrink:0;margin-bottom:-2px;color:var(--muted);padding:4px;min-width:30px;min-height:30px}
+.calendar-tab-item.active .calendar-tab-info{color:var(--primary)}
 .tab-content{display:none;padding:12px 12px 0}.tab-content.active{display:block}
 #tab-calendar.active{display:flex;flex-direction:column;flex:1}
 #tab-scan.active{display:flex;flex-direction:column;gap:10px}
@@ -154,7 +157,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 #modal-add-event input{flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:.85rem;background:var(--card);color:var(--text)}
 
 /* Readonly banner */
-.readonly-banner{background:#fff3cd;color:#856404;padding:8px 12px;border-radius:var(--radius);font-size:.85rem;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px}
+.readonly-banner{background:#fff3cd;color:#856404;padding:8px 12px;border-radius:var(--radius);font-size:.85rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .readonly-banner-copy{min-width:0}
 .readonly-banner-owner{font-weight:500}
 .readonly-banner-actions{display:inline-flex;align-items:center;gap:6px;flex-shrink:0}

@@ -75,15 +75,26 @@ function renderCalendarTabs() {
   if (!tabs) return;
 
   const items = [];
-  if (googleOwnerCalendar) items.push({ id: googleOwnerCalendar.id, name: 'Mi calendario' });
-  storeGetImported().forEach(meta => items.push({ id: meta.id, name: storeImportedCalendarName(meta) }));
+  if (googleOwnerCalendar) items.push({ id: googleOwnerCalendar.id, name: 'Mi calendario', readonly: false });
+  storeGetImported().forEach(meta => items.push({ id: meta.id, name: storeImportedCalendarName(meta), readonly: true }));
 
   tabs.innerHTML = items.map(item => `
-    <button
-      type="button"
-      class="calendar-tab${currentCal && currentCal.id === item.id ? ' active' : ''}"
-      onclick="showCalendar('${item.id}')"
-    >${escapeHtml(item.name)}</button>
+    <div class="calendar-tab-item${currentCal && currentCal.id === item.id ? ' active' : ''}">
+      <button
+        type="button"
+        class="calendar-tab${currentCal && currentCal.id === item.id ? ' active' : ''}"
+        onclick="showCalendar('${item.id}')"
+      >${escapeHtml(item.name)}</button>
+      ${item.readonly ? `
+        <button
+          type="button"
+          class="calendar-tab-info btn btn-sm btn-ghost icon-button"
+          onclick="openReadonlyBannerForCalendar('${item.id}', event)"
+          aria-label="Mostrar información del calendario importado ${escapeHtml(item.name)}"
+          title="Mostrar información del calendario importado"
+        >${appIconSpan('info')}</button>
+      ` : ''}
+    </div>
   `).join('');
 
   syncCalendarTabsVisibility();
@@ -110,6 +121,7 @@ function appIcon(name) {
     close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg>',
     edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path></svg>',
     refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path></svg>',
+    info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 10v6"></path><path d="M12 7h.01"></path></svg>',
     success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>',
     warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>'
   };

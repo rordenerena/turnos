@@ -5,6 +5,7 @@ let calYear, calMonth;
 let selectedDate = null;
 let patternSeq = [];
 let readonlyBannerRefreshState = { calendarId: null, status: 'idle', resetTimer: null };
+const readonlyBannerHiddenByCalendar = new Set();
 
 function readonlyBannerResetLater(calendarId) {
   clearTimeout(readonlyBannerRefreshState.resetTimer);
@@ -44,6 +45,29 @@ async function readonlyBannerRefreshCurrent(event) {
   } catch {
     // El error visual y el toast ya se manejan en shareRefreshImportedAction.
   }
+}
+
+function isReadonlyBannerVisible(calendarId) {
+  return !!calendarId && !readonlyBannerHiddenByCalendar.has(calendarId);
+}
+
+function closeReadonlyBanner(event) {
+  event?.preventDefault();
+  if (!currentCal || !currentCal.readonly) return;
+  readonlyBannerHiddenByCalendar.add(currentCal.id);
+  calRender();
+}
+
+async function openReadonlyBannerForCalendar(calendarId, event) {
+  event?.preventDefault();
+  event?.stopPropagation();
+  if (!calendarId) return;
+  readonlyBannerHiddenByCalendar.delete(calendarId);
+  if (!currentCal || currentCal.id !== calendarId) {
+    await selectCalendar(calendarId);
+    return;
+  }
+  if (currentCal.readonly) calRender();
 }
 
 function getModalDraftDay(ds) {
@@ -127,7 +151,8 @@ function calRender() {
 
   const banner = document.getElementById('readonly-banner');
   const readonly = !!(currentCal && currentCal.readonly);
-  if (readonly) {
+  const bannerVisible = readonly && isReadonlyBannerVisible(currentCal.id);
+  if (bannerVisible) {
     const refreshState = readonlyBannerRefreshState.calendarId === currentCal.id ? readonlyBannerRefreshState.status : 'idle';
     const ownerIdentity = storeOwnerIdentityText(currentCal);
     banner.innerHTML = `
@@ -148,6 +173,13 @@ function calRender() {
           aria-label="Actualizar calendario importado"
           title="Actualizar calendario importado"
         >${readonlyBannerRefreshMarkup(refreshState)}</button>
+        <button
+          type="button"
+          class="btn btn-sm readonly-banner-refresh icon-button"
+          onclick="closeReadonlyBanner(event)"
+          aria-label="Cerrar aviso de solo lectura"
+          title="Cerrar aviso de solo lectura"
+        >${appIconSpan('close')}</button>
       </span>
     `;
     banner.classList.remove('hidden');
