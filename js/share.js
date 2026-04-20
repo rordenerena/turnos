@@ -441,27 +441,14 @@ function renderImportedList() {
   const el = document.getElementById('imported-list');
   const title = document.getElementById('imported-list-title');
   const imports = storeGetImported();
-  let html = '';
-
   if (title) title.classList.toggle('hidden', imports.length === 0);
 
-  if (googleOwnerCalendar) {
-    html += `
-      <div class="imported-item">
-        <div class="imp-body">
-          <div class="imp-name">Calendario compartido</div>
-          <div class="imp-date">Enlace público:</div>
-          <div class="imp-url">${escapeHtml(googleOwnerCalendar.publicIcalUrl)}</div>
-        </div>
-        <div class="imp-actions">
-          <button class="btn btn-sm btn-primary" onclick="selectCalendar('${googleOwnerCalendar.id}');switchTab('calendar')">Ver</button>
-        </div>
-      </div>
-    `;
+  if (!imports.length) {
+    el.innerHTML = '';
+    return;
   }
 
-  if (imports.length) {
-    html += imports.map(meta => `
+  el.innerHTML = imports.map(meta => `
       <div class="imported-item">
         <div class="imp-body">
           <div class="imp-name">👁 ${escapeHtml(storeImportedCalendarName(meta))}${calItemCount(meta)}</div>
@@ -476,9 +463,6 @@ function renderImportedList() {
         </div>
       </div>
     `).join('');
-  }
-
-  el.innerHTML = html || '<p class="hint">Todavía no importaste calendarios.</p>';
 }
 
 async function refreshImported(id) {

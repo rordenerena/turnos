@@ -78,7 +78,6 @@ function renderCalendarTabs() {
   if (googleOwnerCalendar) items.push({ id: googleOwnerCalendar.id, name: 'Mi calendario' });
   storeGetImported().forEach(meta => items.push({ id: meta.id, name: storeImportedCalendarName(meta) }));
 
-  tabs.classList.toggle('hidden', items.length <= 1);
   tabs.innerHTML = items.map(item => `
     <button
       type="button"
@@ -86,6 +85,15 @@ function renderCalendarTabs() {
       onclick="showCalendar('${item.id}')"
     >${escapeHtml(item.name)}</button>
   `).join('');
+
+  syncCalendarTabsVisibility();
+}
+
+function syncCalendarTabsVisibility(view = currentVisibleTab()) {
+  const tabs = document.getElementById('tabs');
+  if (!tabs) return;
+  const hasMultipleCalendars = tabs.children.length > 1;
+  tabs.classList.toggle('hidden', view !== 'calendar' || !hasMultipleCalendars);
 }
 
 function syncOwnerActionCopy() {
@@ -180,6 +188,7 @@ function openPrimaryMenuAction(action) {
 function switchTab(tab) {
   localStorage.setItem(VIEW_KEY, tab);
   document.querySelectorAll('.tab-content').forEach(item => item.classList.toggle('active', item.id === `tab-${tab}`));
+  syncCalendarTabsVisibility(tab);
 
   if (tab === 'shared') {
     renderImportedList();
