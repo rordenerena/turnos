@@ -3,6 +3,12 @@
 let _headerTaps = 0;
 let _headerTimer = null;
 const VIEW_KEY = 'turnos_view';
+const HEADER_VIEW_CONFIG = {
+  calendar: { title: '📅 Turnos', button: 'menu' },
+  patterns: { title: 'Patrones', button: 'back' },
+  shared: { title: 'Compartir', button: 'back' },
+  settings: { title: 'Configuración', button: 'back' }
+};
 let fabMenuOpen = false;
 let primaryDrawerOpen = false;
 
@@ -105,9 +111,43 @@ function renderFabMainButton() {
   fabMain.setAttribute('aria-label', fabMenuOpen ? 'Cerrar acciones rápidas' : 'Abrir acciones rápidas');
 }
 
-function renderPrimaryDrawerButton() {
+function headerButtonIconMarkup(mode) {
+  if (mode === 'back') {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>';
+  }
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>';
+}
+
+function goBackToCalendar() {
+  closePrimaryDrawer();
+  closeFabMenu();
+  switchTab('calendar');
+}
+
+function syncHeaderState(view = currentVisibleTab()) {
+  const config = HEADER_VIEW_CONFIG[view] || HEADER_VIEW_CONFIG.calendar;
+  const title = document.getElementById('header-title');
   const button = document.getElementById('header-menu-button');
+  if (title) title.textContent = config.title;
+  if (config.button === 'back') {
+    primaryDrawerOpen = false;
+    document.getElementById('drawer-overlay')?.classList.add('hidden');
+  }
   if (!button) return;
+
+  button.classList.toggle('header-back-button', config.button === 'back');
+  button.innerHTML = `<span class="header-menu-icon" aria-hidden="true">${headerButtonIconMarkup(config.button)}</span>`;
+
+  if (config.button === 'back') {
+    button.onclick = goBackToCalendar;
+    button.setAttribute('aria-label', 'Volver al calendario');
+    button.setAttribute('aria-expanded', 'false');
+    button.removeAttribute('aria-controls');
+    return;
+  }
+
+  button.onclick = togglePrimaryDrawer;
+  button.setAttribute('aria-controls', 'primary-drawer');
   button.setAttribute('aria-expanded', primaryDrawerOpen ? 'true' : 'false');
   button.setAttribute('aria-label', primaryDrawerOpen ? 'Cerrar menú principal' : 'Abrir menú principal');
 }
@@ -122,14 +162,14 @@ function closePrimaryDrawer(event) {
   if (event && event.target && event.target.id !== 'drawer-overlay') return;
   primaryDrawerOpen = false;
   document.getElementById('drawer-overlay')?.classList.add('hidden');
-  renderPrimaryDrawerButton();
+  syncHeaderState();
 }
 
 function togglePrimaryDrawer() {
   primaryDrawerOpen = !primaryDrawerOpen;
   if (primaryDrawerOpen) closeFabMenu();
   document.getElementById('drawer-overlay')?.classList.toggle('hidden', !primaryDrawerOpen);
-  renderPrimaryDrawerButton();
+  syncHeaderState();
 }
 
 function toggleFabMenu() {
@@ -175,6 +215,7 @@ function switchTab(tab) {
     document.getElementById('owner-feed-url').textContent = googleOwnerCalendar?.publicIcalUrl || 'Pendiente';
   }
   syncOwnerActionCopy();
+  syncHeaderState(tab);
 }
 
 function ensureWritableTabVisibility() {
@@ -298,7 +339,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   calInit();
   renderImportedList();
   renderFabMainButton();
-  renderPrimaryDrawerButton();
+  syncHeaderState();
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(reg => {
