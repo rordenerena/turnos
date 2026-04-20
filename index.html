@@ -21,27 +21,28 @@
     </div>
   </div>
 
+  <header id="header">
+    <button
+      id="header-menu-button"
+      class="header-menu-button"
+      type="button"
+      onclick="togglePrimaryDrawer()"
+      aria-label="Abrir menú principal"
+      aria-expanded="false"
+      aria-controls="primary-drawer"
+    >
+      <span class="header-menu-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <line x1="4" y1="7" x2="20" y2="7"></line>
+          <line x1="4" y1="12" x2="20" y2="12"></line>
+          <line x1="4" y1="17" x2="20" y2="17"></line>
+        </svg>
+      </span>
+    </button>
+    <h1 id="header-title" onclick="headerTap()">📅 Turnos</h1>
+  </header>
+
   <div id="app">
-    <header id="header">
-      <button
-        id="header-menu-button"
-        class="header-menu-button"
-        type="button"
-        onclick="togglePrimaryDrawer()"
-        aria-label="Abrir menú principal"
-        aria-expanded="false"
-        aria-controls="primary-drawer"
-      >
-        <span class="header-menu-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-            <line x1="4" y1="7" x2="20" y2="7"></line>
-            <line x1="4" y1="12" x2="20" y2="12"></line>
-            <line x1="4" y1="17" x2="20" y2="17"></line>
-          </svg>
-        </span>
-      </button>
-      <h1 id="header-title" onclick="headerTap()">📅 Turnos</h1>
-    </header>
 
     <div id="drawer-overlay" class="drawer-overlay hidden" onclick="closePrimaryDrawer(event)">
       <aside id="primary-drawer" class="primary-drawer" aria-label="Menú principal">
@@ -318,7 +319,7 @@
       <span id="sync-icon">⏳</span>
     </div>
     <div id="toast" class="hidden"></div>
-    <p class="app-version">v21/04/2026 00:33</p>
+    <p class="app-version">v21/04/2026 00:38</p>
   </div>
 
   <script src="js/store.js"></script>
