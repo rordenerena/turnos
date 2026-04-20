@@ -89,9 +89,9 @@ function renderCalendarTabs() {
         <button
           type="button"
           class="calendar-tab-info btn btn-sm btn-ghost icon-button"
-          onclick="openReadonlyBannerForCalendar('${item.id}', event)"
-          aria-label="Mostrar información del calendario importado ${escapeHtml(item.name)}"
-          title="Mostrar información del calendario importado"
+          onclick="toggleReadonlyBannerForCalendar('${item.id}', event)"
+          aria-label="Alternar información del calendario importado ${escapeHtml(item.name)}"
+          title="Alternar información del calendario importado"
         >${appIconSpan('info')}</button>
       ` : ''}
     </div>

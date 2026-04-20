@@ -2,6 +2,7 @@
 :root{
   --bg:#f5f5f5;--card:#fff;--text:#222;--muted:#888;--border:#ddd;
   --primary:#0a0a0a;--primary-contrast:#fff;--accent:#34a853;--header-bg:#0a0a0a;--header-control-bg:rgba(255,255,255,.12);--today-bg:#f2f2f2;
+  --readonly-banner-bg:#eef6ff;--readonly-banner-text:#1f3a5f;--readonly-banner-border:#bfd7f2;--readonly-banner-button-bg:rgba(255,255,255,.78);--readonly-banner-button-hover:#dcecff;--readonly-banner-button-text:#24476f;--readonly-banner-success:#216e39;--readonly-banner-error:#b3261e;
   --shift-m:#ff9800;--shift-t:#2196f3;--shift-n:#9c27b0;--shift-l:#4caf50;--shift-r:#e53935;
   --radius:8px;
 }
@@ -9,11 +10,13 @@
   :root:not([data-theme="light"]){
     --bg:#1a1a1a;--card:#2a2a2a;--text:#e0e0e0;--muted:#999;--border:#444;
     --primary:#f3f3f3;--primary-contrast:#0a0a0a;--accent:#66bb6a;--header-bg:#0a0a0a;--header-control-bg:rgba(255,255,255,.12);--today-bg:#343434;
+    --readonly-banner-bg:#1f2b3a;--readonly-banner-text:#dcecff;--readonly-banner-border:#37506c;--readonly-banner-button-bg:#2c4159;--readonly-banner-button-hover:#36506f;--readonly-banner-button-text:#f5f9ff;--readonly-banner-success:#7edc96;--readonly-banner-error:#ff9b97;
   }
 }
 :root[data-theme="dark"]{
   --bg:#1a1a1a;--card:#2a2a2a;--text:#e0e0e0;--muted:#999;--border:#444;
   --primary:#f3f3f3;--primary-contrast:#0a0a0a;--accent:#66bb6a;--header-bg:#0a0a0a;--header-control-bg:rgba(255,255,255,.12);--today-bg:#343434;
+  --readonly-banner-bg:#1f2b3a;--readonly-banner-text:#dcecff;--readonly-banner-border:#37506c;--readonly-banner-button-bg:#2c4159;--readonly-banner-button-hover:#36506f;--readonly-banner-button-text:#f5f9ff;--readonly-banner-success:#7edc96;--readonly-banner-error:#ff9b97;
 }
 body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);height:100vh;height:100dvh;padding-bottom:env(safe-area-inset-bottom,0px);display:flex;flex-direction:column}
 #app{width:100%;max-width:500px;margin:0 auto;padding:0;padding-bottom:env(safe-area-inset-bottom,8px);display:flex;flex-direction:column;flex:1;overflow-y:auto}
@@ -157,14 +160,15 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 #modal-add-event input{flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:.85rem;background:var(--card);color:var(--text)}
 
 /* Readonly banner */
-.readonly-banner{background:#fff3cd;color:#856404;padding:8px 12px;border-radius:var(--radius);font-size:.85rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.readonly-banner{background:var(--readonly-banner-bg);color:var(--readonly-banner-text);border:1px solid var(--readonly-banner-border);padding:8px 12px;border-radius:var(--radius);font-size:.85rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;box-shadow:0 1px 0 rgba(0,0,0,.04)}
 .readonly-banner-copy{min-width:0}
 .readonly-banner-owner{font-weight:500}
 .readonly-banner-actions{display:inline-flex;align-items:center;gap:6px;flex-shrink:0}
-.readonly-banner-refresh{min-width:34px;min-height:30px;padding:4px 8px;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.55)}
+.readonly-banner-refresh{min-width:34px;min-height:30px;padding:4px 8px;display:inline-flex;align-items:center;justify-content:center;background:var(--readonly-banner-button-bg);color:var(--readonly-banner-button-text);border-color:var(--readonly-banner-border)}
+.readonly-banner-refresh:hover{background:var(--readonly-banner-button-hover);border-color:var(--readonly-banner-button-hover);opacity:1}
 .readonly-banner-refresh[data-state="refreshing"]{cursor:wait}
-.readonly-banner-refresh[data-state="success"]{color:#1b5e20;border-color:#1b5e20}
-.readonly-banner-refresh[data-state="error"]{color:#b71c1c;border-color:#b71c1c}
+.readonly-banner-refresh[data-state="success"]{color:var(--readonly-banner-success);border-color:var(--readonly-banner-success)}
+.readonly-banner-refresh[data-state="error"]{color:var(--readonly-banner-error);border-color:var(--readonly-banner-error)}
 .readonly-banner-spinner{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:readonly-banner-spin .7s linear infinite}
 @keyframes readonly-banner-spin{to{transform:rotate(360deg)}}
 

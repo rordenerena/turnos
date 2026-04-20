@@ -58,16 +58,23 @@ function closeReadonlyBanner(event) {
   calRender();
 }
 
-async function openReadonlyBannerForCalendar(calendarId, event) {
+async function toggleReadonlyBannerForCalendar(calendarId, event) {
   event?.preventDefault();
   event?.stopPropagation();
   if (!calendarId) return;
-  readonlyBannerHiddenByCalendar.delete(calendarId);
+
   if (!currentCal || currentCal.id !== calendarId) {
+    readonlyBannerHiddenByCalendar.delete(calendarId);
     await selectCalendar(calendarId);
     return;
   }
-  if (currentCal.readonly) calRender();
+
+  if (!currentCal.readonly) return;
+
+  if (isReadonlyBannerVisible(calendarId)) readonlyBannerHiddenByCalendar.add(calendarId);
+  else readonlyBannerHiddenByCalendar.delete(calendarId);
+
+  calRender();
 }
 
 function getModalDraftDay(ds) {
