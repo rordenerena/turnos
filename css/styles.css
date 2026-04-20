@@ -1,19 +1,19 @@
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#f5f5f5;--card:#fff;--text:#222;--muted:#888;--border:#ddd;
-  --primary:#4285f4;--accent:#34a853;--header-bg:#0a0a0a;
+  --primary:#0a0a0a;--primary-contrast:#fff;--accent:#34a853;--header-bg:#0a0a0a;--today-bg:#f2f2f2;
   --shift-m:#ff9800;--shift-t:#2196f3;--shift-n:#9c27b0;--shift-l:#4caf50;--shift-r:#e53935;
   --radius:8px;
 }
 @media(prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     --bg:#1a1a1a;--card:#2a2a2a;--text:#e0e0e0;--muted:#999;--border:#444;
-    --primary:#5b9bf4;--accent:#66bb6a;--header-bg:#0a0a0a;
+    --primary:#f3f3f3;--primary-contrast:#0a0a0a;--accent:#66bb6a;--header-bg:#0a0a0a;--today-bg:#343434;
   }
 }
 :root[data-theme="dark"]{
   --bg:#1a1a1a;--card:#2a2a2a;--text:#e0e0e0;--muted:#999;--border:#444;
-  --primary:#5b9bf4;--accent:#66bb6a;--header-bg:#0a0a0a;
+  --primary:#f3f3f3;--primary-contrast:#0a0a0a;--accent:#66bb6a;--header-bg:#0a0a0a;--today-bg:#343434;
 }
 body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);height:100vh;height:100dvh;padding-bottom:env(safe-area-inset-bottom,0px)}
 #app{max-width:500px;margin:0 auto;padding:0;padding-bottom:env(safe-area-inset-bottom,8px);display:flex;flex-direction:column;height:100%;overflow-y:auto}
@@ -40,7 +40,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 /* Buttons */
 .btn{border:none;padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-size:.85rem;background:var(--card);color:var(--text);border:1px solid var(--border);transition:opacity .2s;touch-action:manipulation}
 .btn:hover{opacity:.8}.btn:active{transform:scale(.97)}
-.btn-primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.btn-primary{background:var(--primary);color:var(--primary-contrast);border-color:var(--primary)}
 .btn-accent{background:#bbdefb;color:#333;border-color:#bbdefb}
 .btn-sm{padding:4px 10px;font-size:.8rem}
 .btn-ghost{background:transparent;border-color:transparent}
@@ -78,7 +78,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .cal-day{background:var(--card);padding:2px;cursor:pointer;border:1px solid var(--border);position:relative;font-size:.75rem;transition:box-shadow .15s;overflow:hidden;margin-right:-1px;margin-bottom:-1px;display:flex;flex-direction:column;flex-wrap:wrap}
 .cal-day:hover{box-shadow:0 2px 8px rgba(0,0,0,.1)}
 .cal-day.empty{background:transparent;border-color:transparent;cursor:default;min-height:0;margin:0}
-.cal-day.today{border-color:var(--primary);border-width:2px}
+.cal-day.today{background:var(--today-bg)}
 .cal-day .day-num{font-weight:600;font-size:.7rem}
 .cal-day .day-shifts{display:flex;flex-wrap:wrap;gap:1px;align-items:center;margin-top:6px}
 .cal-day .day-shift{display:inline-flex;justify-content:center;align-items:center;margin-right:1px;padding:1px 3px;border-radius:3px;color:#fff;font-weight:700;font-size:.65rem;min-width:14px}
