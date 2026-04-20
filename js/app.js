@@ -157,7 +157,6 @@ function syncHeaderState(view = currentVisibleTab()) {
   const config = HEADER_VIEW_CONFIG[view] || HEADER_VIEW_CONFIG.calendar;
   const title = document.getElementById('header-title');
   const button = document.getElementById('header-menu-button');
-  const effectiveMode = config.button === 'menu' && primaryDrawerOpen ? 'close' : config.button;
   if (title) title.textContent = config.title;
   syncPrimaryDrawerState(view);
   if (config.button === 'back') {
@@ -167,7 +166,7 @@ function syncHeaderState(view = currentVisibleTab()) {
   if (!button) return;
 
   button.classList.toggle('header-back-button', config.button === 'back');
-  button.innerHTML = `<span class="header-menu-icon" aria-hidden="true">${headerButtonIconMarkup(effectiveMode)}</span>`;
+  button.innerHTML = `<span class="header-menu-icon" aria-hidden="true">${headerButtonIconMarkup(config.button)}</span>`;
 
   if (config.button === 'back') {
     button.onclick = goBackToCalendar;
@@ -180,7 +179,7 @@ function syncHeaderState(view = currentVisibleTab()) {
   button.onclick = togglePrimaryDrawer;
   button.setAttribute('aria-controls', 'primary-drawer');
   button.setAttribute('aria-expanded', primaryDrawerOpen ? 'true' : 'false');
-  button.setAttribute('aria-label', primaryDrawerOpen ? 'Cerrar menú principal' : 'Abrir menú principal');
+  button.setAttribute('aria-label', 'Abrir menú principal');
 }
 
 function closePrimaryDrawer(event) {

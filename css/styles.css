@@ -22,7 +22,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 #app{width:100%;max-width:500px;margin:0 auto;padding:0;padding-bottom:env(safe-area-inset-bottom,8px);display:flex;flex-direction:column;flex:1;overflow-y:auto}
 
 /* Header */
-#header{display:flex;justify-content:flex-start;align-items:center;width:100%;padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px;margin:0;gap:12px;background:var(--header-bg);color:#fff;border-radius:0;box-shadow:0 3px 10px rgba(0,0,0,.16);position:relative;z-index:200}
+#header{display:flex;justify-content:flex-start;align-items:center;width:100%;padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px;margin:0;gap:12px;background:var(--header-bg);color:#fff;border-radius:0;box-shadow:0 3px 10px rgba(0,0,0,.16);position:relative;z-index:160}
 #header h1{font-size:1.1rem;white-space:nowrap;flex:1;text-align:center;padding-right:40px}
 .header-menu-button{width:40px;height:40px;border:none;border-radius:10px;background:transparent;color:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;box-shadow:none}
 .header-menu-button:active{transform:scale(.96)}
@@ -32,9 +32,12 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 
 /* Primary drawer */
 .drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:170}
-.primary-drawer{width:min(82vw,320px);height:100vh;height:100dvh;background:var(--card);color:var(--text);padding:20px 16px calc(20px + env(safe-area-inset-bottom,0px));box-shadow:10px 0 28px rgba(0,0,0,.2);display:flex;flex-direction:column;gap:18px}
-.primary-drawer-header{display:flex;align-items:center;justify-content:flex-start;gap:8px}
-.primary-drawer-title{font-size:1.15rem;font-weight:700}
+.primary-drawer{width:min(82vw,320px);height:100vh;height:100dvh;background:var(--card);color:var(--text);padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(20px + env(safe-area-inset-bottom,0px));box-shadow:10px 0 28px rgba(0,0,0,.2);display:flex;flex-direction:column;gap:18px}
+.primary-drawer-header{display:grid;grid-template-columns:40px 1fr 40px;align-items:center;gap:8px}
+.primary-drawer-title{font-size:1.15rem;font-weight:700;text-align:center}
+.primary-drawer-close,.primary-drawer-header-spacer{width:40px;height:40px}
+.primary-drawer-close{border:none;border-radius:10px;background:transparent;color:var(--text);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.primary-drawer-close:active{transform:scale(.96)}
 .primary-drawer-actions{display:flex;flex-direction:column;gap:10px}
 .primary-drawer-footer{margin-top:auto;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:flex-start}
 .drawer-version{font-size:.72rem;color:var(--muted)}

@@ -47,7 +47,16 @@
     <div id="drawer-overlay" class="drawer-overlay hidden" onclick="closePrimaryDrawer(event)">
       <aside id="primary-drawer" class="primary-drawer" aria-label="Menú principal">
         <div class="primary-drawer-header">
+          <button class="primary-drawer-close" type="button" onclick="closePrimaryDrawer()" aria-label="Cerrar menú principal">
+            <span class="icon-inline" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6L6 18"></path>
+                <path d="M6 6l12 12"></path>
+              </svg>
+            </span>
+          </button>
           <span class="primary-drawer-title">Menú</span>
+          <span class="primary-drawer-header-spacer" aria-hidden="true"></span>
         </div>
         <div class="primary-drawer-actions">
           <button class="drawer-action" type="button" data-view="calendar" onclick="openPrimaryMenuAction('calendar')">
@@ -108,7 +117,7 @@
           </button>
         </div>
         <div class="primary-drawer-footer">
-          <span class="drawer-version">v21/04/2026 01:44</span>
+          <span class="drawer-version">v21/04/2026 01:50</span>
         </div>
       </aside>
     </div>
