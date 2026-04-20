@@ -133,6 +133,9 @@ function appIconSpan(name) {
 }
 
 function headerButtonIconMarkup(mode) {
+  if (mode === 'close') {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg>';
+  }
   if (mode === 'back') {
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>';
   }
@@ -154,6 +157,7 @@ function syncHeaderState(view = currentVisibleTab()) {
   const config = HEADER_VIEW_CONFIG[view] || HEADER_VIEW_CONFIG.calendar;
   const title = document.getElementById('header-title');
   const button = document.getElementById('header-menu-button');
+  const effectiveMode = config.button === 'menu' && primaryDrawerOpen ? 'close' : config.button;
   if (title) title.textContent = config.title;
   syncPrimaryDrawerState(view);
   if (config.button === 'back') {
@@ -163,7 +167,7 @@ function syncHeaderState(view = currentVisibleTab()) {
   if (!button) return;
 
   button.classList.toggle('header-back-button', config.button === 'back');
-  button.innerHTML = `<span class="header-menu-icon" aria-hidden="true">${headerButtonIconMarkup(config.button)}</span>`;
+  button.innerHTML = `<span class="header-menu-icon" aria-hidden="true">${headerButtonIconMarkup(effectiveMode)}</span>`;
 
   if (config.button === 'back') {
     button.onclick = goBackToCalendar;

@@ -5,7 +5,41 @@ let calYear, calMonth;
 let selectedDate = null;
 let patternSeq = [];
 let readonlyBannerRefreshState = { calendarId: null, status: 'idle', resetTimer: null };
-const readonlyBannerHiddenByCalendar = new Set();
+const READONLY_BANNER_VISIBILITY_KEY = 'turnos_readonly_banner_visibility';
+const readonlyBannerHiddenByCalendar = loadReadonlyBannerHiddenByCalendar();
+
+function loadReadonlyBannerHiddenByCalendar() {
+  try {
+    const raw = localStorage.getItem(READONLY_BANNER_VISIBILITY_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return new Set();
+    return new Set(Object.entries(parsed)
+      .filter(([calendarId, hidden]) => calendarId && hidden === true)
+      .map(([calendarId]) => calendarId));
+  } catch {
+    return new Set();
+  }
+}
+
+function persistReadonlyBannerHiddenByCalendar() {
+  try {
+    const visibilityByCalendar = {};
+    readonlyBannerHiddenByCalendar.forEach(calendarId => {
+      if (calendarId) visibilityByCalendar[calendarId] = true;
+    });
+    localStorage.setItem(READONLY_BANNER_VISIBILITY_KEY, JSON.stringify(visibilityByCalendar));
+  } catch {
+    // Si localStorage falla, mantenemos el estado en memoria sin romper la app.
+  }
+}
+
+function setReadonlyBannerVisibility(calendarId, visible) {
+  if (!calendarId) return;
+  if (visible) readonlyBannerHiddenByCalendar.delete(calendarId);
+  else readonlyBannerHiddenByCalendar.add(calendarId);
+  persistReadonlyBannerHiddenByCalendar();
+}
 
 function readonlyBannerResetLater(calendarId) {
   clearTimeout(readonlyBannerRefreshState.resetTimer);
@@ -54,7 +88,7 @@ function isReadonlyBannerVisible(calendarId) {
 function closeReadonlyBanner(event) {
   event?.preventDefault();
   if (!currentCal || !currentCal.readonly) return;
-  readonlyBannerHiddenByCalendar.add(currentCal.id);
+  setReadonlyBannerVisibility(currentCal.id, false);
   calRender();
 }
 
@@ -64,15 +98,14 @@ async function toggleReadonlyBannerForCalendar(calendarId, event) {
   if (!calendarId) return;
 
   if (!currentCal || currentCal.id !== calendarId) {
-    readonlyBannerHiddenByCalendar.delete(calendarId);
+    setReadonlyBannerVisibility(calendarId, true);
     await selectCalendar(calendarId);
     return;
   }
 
   if (!currentCal.readonly) return;
 
-  if (isReadonlyBannerVisible(calendarId)) readonlyBannerHiddenByCalendar.add(calendarId);
-  else readonlyBannerHiddenByCalendar.delete(calendarId);
+  setReadonlyBannerVisibility(calendarId, !isReadonlyBannerVisible(calendarId));
 
   calRender();
 }
