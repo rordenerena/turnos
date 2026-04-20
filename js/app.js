@@ -9,7 +9,6 @@ const HEADER_VIEW_CONFIG = {
   shared: { title: 'Compartir', button: 'menu' },
   settings: { title: 'Configuración', button: 'menu' }
 };
-let fabMenuOpen = false;
 let primaryDrawerOpen = false;
 
 function headerTap() {
@@ -97,20 +96,6 @@ function syncOwnerActionCopy() {
   if (shareCopy) shareCopy.textContent = '';
 }
 
-function fabMainIconMarkup(isOpen) {
-  return isOpen
-    ? '<span class="fab-main-close" aria-hidden="true">×</span>'
-    : `<span class="fab-main-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg></span>`;
-}
-
-function renderFabMainButton() {
-  const fabMain = document.getElementById('fab-main');
-  if (!fabMain) return;
-  fabMain.innerHTML = fabMainIconMarkup(fabMenuOpen);
-  fabMain.setAttribute('aria-expanded', fabMenuOpen ? 'true' : 'false');
-  fabMain.setAttribute('aria-label', fabMenuOpen ? 'Cerrar acciones rápidas' : 'Abrir acciones rápidas');
-}
-
 function headerButtonIconMarkup(mode) {
   if (mode === 'back') {
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>';
@@ -120,8 +105,13 @@ function headerButtonIconMarkup(mode) {
 
 function goBackToCalendar() {
   closePrimaryDrawer();
-  closeFabMenu();
   switchTab('calendar');
+}
+
+function syncPrimaryDrawerState(view = currentVisibleTab()) {
+  document.querySelectorAll('.drawer-action[data-view]').forEach(item => {
+    item.classList.toggle('active', item.dataset.view === view);
+  });
 }
 
 function syncHeaderState(view = currentVisibleTab()) {
@@ -129,6 +119,7 @@ function syncHeaderState(view = currentVisibleTab()) {
   const title = document.getElementById('header-title');
   const button = document.getElementById('header-menu-button');
   if (title) title.textContent = config.title;
+  syncPrimaryDrawerState(view);
   if (config.button === 'back') {
     primaryDrawerOpen = false;
     document.getElementById('drawer-overlay')?.classList.add('hidden');
@@ -152,12 +143,6 @@ function syncHeaderState(view = currentVisibleTab()) {
   button.setAttribute('aria-label', primaryDrawerOpen ? 'Cerrar menú principal' : 'Abrir menú principal');
 }
 
-function closeFabMenu() {
-  fabMenuOpen = false;
-  document.getElementById('fab-actions')?.classList.add('hidden');
-  renderFabMainButton();
-}
-
 function closePrimaryDrawer(event) {
   if (event && event.target && event.target.id !== 'drawer-overlay') return;
   primaryDrawerOpen = false;
@@ -167,30 +152,17 @@ function closePrimaryDrawer(event) {
 
 function togglePrimaryDrawer() {
   primaryDrawerOpen = !primaryDrawerOpen;
-  if (primaryDrawerOpen) closeFabMenu();
   document.getElementById('drawer-overlay')?.classList.toggle('hidden', !primaryDrawerOpen);
   syncHeaderState();
 }
 
-function toggleFabMenu() {
-  fabMenuOpen = !fabMenuOpen;
-  if (fabMenuOpen) closePrimaryDrawer();
-  document.getElementById('fab-actions')?.classList.toggle('hidden', !fabMenuOpen);
-  renderFabMainButton();
-}
-
 function openPrimaryMenuAction(action) {
   closePrimaryDrawer();
-  closeFabMenu();
   if (action === 'scan') {
     scanOpen();
     return;
   }
   switchTab(action);
-}
-
-function fabSelectAction(action) {
-  openPrimaryMenuAction(action);
 }
 
 function switchTab(tab) {
@@ -338,7 +310,6 @@ async function bootstrapAuthorizedApp() {
 document.addEventListener('DOMContentLoaded', async () => {
   calInit();
   renderImportedList();
-  renderFabMainButton();
   syncHeaderState();
 
   if ('serviceWorker' in navigator) {
@@ -379,7 +350,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 let _scanner = null;
 function scanOpen() {
   closePrimaryDrawer();
-  closeFabMenu();
   document.getElementById('scan-overlay').classList.remove('hidden');
   _scanner = new Html5Qrcode('scan-reader');
   _scanner.start(
