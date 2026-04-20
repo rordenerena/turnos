@@ -4,6 +4,7 @@ let _headerTaps = 0;
 let _headerTimer = null;
 const VIEW_KEY = 'turnos_view';
 let fabMenuOpen = false;
+let primaryDrawerOpen = false;
 
 function headerTap() {
   _headerTaps++;
@@ -104,25 +105,52 @@ function renderFabMainButton() {
   fabMain.setAttribute('aria-label', fabMenuOpen ? 'Cerrar acciones rápidas' : 'Abrir acciones rápidas');
 }
 
+function renderPrimaryDrawerButton() {
+  const button = document.getElementById('header-menu-button');
+  if (!button) return;
+  button.setAttribute('aria-expanded', primaryDrawerOpen ? 'true' : 'false');
+  button.setAttribute('aria-label', primaryDrawerOpen ? 'Cerrar menú principal' : 'Abrir menú principal');
+}
+
 function closeFabMenu() {
   fabMenuOpen = false;
   document.getElementById('fab-actions')?.classList.add('hidden');
   renderFabMainButton();
 }
 
+function closePrimaryDrawer(event) {
+  if (event && event.target && event.target.id !== 'drawer-overlay') return;
+  primaryDrawerOpen = false;
+  document.getElementById('drawer-overlay')?.classList.add('hidden');
+  renderPrimaryDrawerButton();
+}
+
+function togglePrimaryDrawer() {
+  primaryDrawerOpen = !primaryDrawerOpen;
+  if (primaryDrawerOpen) closeFabMenu();
+  document.getElementById('drawer-overlay')?.classList.toggle('hidden', !primaryDrawerOpen);
+  renderPrimaryDrawerButton();
+}
+
 function toggleFabMenu() {
   fabMenuOpen = !fabMenuOpen;
+  if (fabMenuOpen) closePrimaryDrawer();
   document.getElementById('fab-actions')?.classList.toggle('hidden', !fabMenuOpen);
   renderFabMainButton();
 }
 
-function fabSelectAction(action) {
+function openPrimaryMenuAction(action) {
+  closePrimaryDrawer();
   closeFabMenu();
   if (action === 'scan') {
     scanOpen();
     return;
   }
   switchTab(action);
+}
+
+function fabSelectAction(action) {
+  openPrimaryMenuAction(action);
 }
 
 function switchTab(tab) {
@@ -270,6 +298,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   calInit();
   renderImportedList();
   renderFabMainButton();
+  renderPrimaryDrawerButton();
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(reg => {
@@ -308,6 +337,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 let _scanner = null;
 function scanOpen() {
+  closePrimaryDrawer();
   closeFabMenu();
   document.getElementById('scan-overlay').classList.remove('hidden');
   _scanner = new Html5Qrcode('scan-reader');
