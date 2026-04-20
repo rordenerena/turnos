@@ -90,24 +90,30 @@ function syncOwnerActionCopy() {
   if (shareCopy) shareCopy.textContent = `Vas a compartir siempre ${ownerName}, aunque estés viendo otro calendario.`;
 }
 
+function fabMainIconMarkup(isOpen) {
+  return isOpen
+    ? '<span class="fab-main-close" aria-hidden="true">×</span>'
+    : `<span class="fab-main-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg></span>`;
+}
+
+function renderFabMainButton() {
+  const fabMain = document.getElementById('fab-main');
+  if (!fabMain) return;
+  fabMain.innerHTML = fabMainIconMarkup(fabMenuOpen);
+  fabMain.setAttribute('aria-expanded', fabMenuOpen ? 'true' : 'false');
+  fabMain.setAttribute('aria-label', fabMenuOpen ? 'Cerrar acciones rápidas' : 'Abrir acciones rápidas');
+}
+
 function closeFabMenu() {
   fabMenuOpen = false;
   document.getElementById('fab-actions')?.classList.add('hidden');
-  const fabMain = document.getElementById('fab-main');
-  if (fabMain) {
-    fabMain.textContent = '+';
-    fabMain.setAttribute('aria-expanded', 'false');
-  }
+  renderFabMainButton();
 }
 
 function toggleFabMenu() {
   fabMenuOpen = !fabMenuOpen;
   document.getElementById('fab-actions')?.classList.toggle('hidden', !fabMenuOpen);
-  const fabMain = document.getElementById('fab-main');
-  if (fabMain) {
-    fabMain.textContent = fabMenuOpen ? '×' : '+';
-    fabMain.setAttribute('aria-expanded', fabMenuOpen ? 'true' : 'false');
-  }
+  renderFabMainButton();
 }
 
 function fabSelectAction(action) {
@@ -263,6 +269,7 @@ async function bootstrapAuthorizedApp() {
 document.addEventListener('DOMContentLoaded', async () => {
   calInit();
   renderImportedList();
+  renderFabMainButton();
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(reg => {

@@ -46,6 +46,17 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .tab-content{display:none}.tab-content.active{display:block}
 #tab-calendar.active{display:flex;flex-direction:column;flex:1}
 
+/* Section headers */
+.section-topbar{display:flex;align-items:center;justify-content:flex-start;margin-bottom:4px}
+.section-back{display:inline-flex;align-items:center;gap:8px;padding:0;border:none;background:none;color:var(--muted);font-size:1rem;font-weight:500;cursor:pointer;touch-action:manipulation}
+.section-back:hover{color:var(--text);opacity:1}
+.section-back-icon{width:30px;height:30px;border-radius:999px;border:1px solid var(--border);background:var(--card);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.section-back-icon svg{width:16px;height:16px}
+.section-back-label{line-height:1.1}
+.section-title{font-size:1.25rem;font-weight:650;line-height:1.2;margin:0 0 8px}
+.section-title-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.section-title-row .section-title{margin-bottom:0}
+
 /* Calendar grid */
 #cal-nav{display:flex;align-items:center;gap:8px;margin-bottom:8px;justify-content:center}
 #cal-month-label{font-weight:600;font-size:1rem;min-width:150px;text-align:center}
@@ -143,6 +154,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 /* FAB */
 .fab{position:fixed;bottom:calc(28px + env(safe-area-inset-bottom,0px));right:12px;width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;border:none;font-size:1.4rem;box-shadow:0 3px 8px rgba(0,0,0,.25);cursor:pointer;z-index:140;display:flex;align-items:center;justify-content:center}
 .fab:active{transform:scale(.92)}
+.fab-main-icon,.fab-main-close{display:inline-flex;align-items:center;justify-content:center;line-height:1}
+.fab-main-icon svg{width:22px;height:22px}
+.fab-main-close{font-size:1.7rem;font-weight:300}
 .fab-actions{position:fixed;right:12px;bottom:calc(92px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column-reverse;gap:10px;z-index:139;align-items:flex-end}
 .fab-mini{display:inline-flex;align-items:center;gap:10px;border:none;border-radius:999px;background:var(--card);color:var(--text);border:1px solid var(--border);padding:10px 14px;box-shadow:0 3px 8px rgba(0,0,0,.18);cursor:pointer;font-size:.85rem}
 .fab-mini-icon{width:20px;text-align:center;font-size:1rem}
