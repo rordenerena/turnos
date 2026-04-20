@@ -24,15 +24,9 @@
   <div id="app">
     <header id="header">
       <h1 onclick="headerTap()">📅 Turnos</h1>
-      <select id="cal-selector" onchange="selectCalendar(this.value)"></select>
     </header>
 
-    <nav id="tabs">
-      <button class="tab active" data-tab="calendar" onclick="switchTab('calendar')">Calendario</button>
-      <button class="tab" data-tab="patterns" onclick="switchTab('patterns')">Patrones</button>
-      <button class="tab" data-tab="shared" onclick="switchTab('shared')">Compartir</button>
-      <button class="tab" data-tab="settings" onclick="switchTab('settings')">Configuración</button>
-    </nav>
+    <nav id="tabs" class="hidden" aria-label="Calendarios"></nav>
 
     <!-- Calendar Tab -->
     <section id="tab-calendar" class="tab-content active">
@@ -51,8 +45,9 @@
 
     <!-- Patterns Tab -->
     <section id="tab-patterns" class="tab-content">
-       <h2>Patrón repetitivo</h2>
+       <h2 style="display:flex;justify-content:space-between;align-items:center;gap:8px">Patrón repetitivo <button class="btn btn-sm btn-ghost" type="button" onclick="switchTab('calendar')">← Calendario</button></h2>
       <p class="hint">Crea una secuencia de turnos que se repite cíclicamente.</p>
+      <p id="pattern-owner-context" class="hint"></p>
       <div id="pattern-form" class="card">
         <label>Secuencia:</label>
         <div id="pattern-builder">
@@ -89,10 +84,11 @@
 
     <!-- Share Tab -->
     <section id="tab-shared" class="tab-content">
-      <h2>Compartir mi calendario</h2>
+      <h2 style="display:flex;justify-content:space-between;align-items:center;gap:8px">Compartir mi calendario <button class="btn btn-sm btn-ghost" type="button" onclick="switchTab('calendar')">← Calendario</button></h2>
       <p class="hint">Genera un QR o link. Quien lo escanee importa la referencia pública iCal de tu calendario.</p>
+      <p id="share-owner-context" class="hint"></p>
       <div style="text-align:center;margin:16px 0">
-        <button class="btn btn-primary" onclick="shareGenerate()">Compartir Turnos</button>
+        <button class="btn btn-primary" onclick="shareGenerate()">Compartir mi calendario</button>
       </div>
       <div id="qr-container" class="hidden" style="text-align:center">
         <canvas id="qr-canvas"></canvas>
@@ -108,7 +104,7 @@
 
     <!-- Settings Tab -->
     <section id="tab-settings" class="tab-content">
-      <h2 style="display:flex;justify-content:space-between;align-items:center">Configuración <button class="btn btn-sm btn-ghost" onclick="updateSW()" title="Actualizar app">🔃</button></h2>
+      <h2 style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="display:flex;align-items:center;gap:8px">Configuración <button class="btn btn-sm btn-ghost" onclick="updateSW()" title="Actualizar app">🔃</button></span><button class="btn btn-sm btn-ghost" type="button" onclick="switchTab('calendar')">← Calendario</button></h2>
       <div class="card">
         <label>Tema:</label>
         <select id="theme-select" onchange="setTheme(this.value)">
@@ -171,7 +167,25 @@
       </div>
     </div>
 
-    <button id="fab-scan" class="fab" onclick="scanOpen()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="16" y="16" width="3" height="3" rx=".5"/><line x1="14" y1="14" x2="14" y2="17"/><line x1="17" y1="14" x2="21" y2="14"/></svg></button>
+    <div id="fab-actions" class="fab-actions hidden" aria-label="Acciones rápidas">
+      <button class="fab-mini" type="button" onclick="fabSelectAction('patterns')">
+        <span class="fab-mini-icon" aria-hidden="true">🔁</span>
+        <span class="fab-mini-label">Patrones</span>
+      </button>
+      <button class="fab-mini" type="button" onclick="fabSelectAction('shared')">
+        <span class="fab-mini-icon" aria-hidden="true">🔗</span>
+        <span class="fab-mini-label">Compartir</span>
+      </button>
+      <button class="fab-mini" type="button" onclick="fabSelectAction('settings')">
+        <span class="fab-mini-icon" aria-hidden="true">⚙️</span>
+        <span class="fab-mini-label">Configuración</span>
+      </button>
+      <button class="fab-mini" type="button" onclick="fabSelectAction('scan')">
+        <span class="fab-mini-icon" aria-hidden="true">📷</span>
+        <span class="fab-mini-label">Escanear QR</span>
+      </button>
+    </div>
+    <button id="fab-main" class="fab" type="button" onclick="toggleFabMenu()" aria-label="Abrir acciones rápidas" aria-expanded="false">+</button>
 
     <div id="scan-overlay" class="hidden" onclick="scanClose(event)">
       <div id="scan-modal">

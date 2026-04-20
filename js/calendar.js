@@ -155,8 +155,6 @@ function calRender() {
     banner.innerHTML = '';
     banner.classList.add('hidden');
   }
-  document.querySelectorAll('.tab[data-tab="patterns"],.tab[data-tab="shared"],.tab[data-tab="settings"]').forEach(tab => tab.classList.toggle('hidden', readonly));
-  if (readonly && typeof ensureWritableTabVisibility === 'function') ensureWritableTabVisibility();
 }
 
 function sortShifts(a, b) {
@@ -281,7 +279,8 @@ function patternModeChange() {
 }
 
 async function patternApply() {
-  if (!currentCal || currentCal.readonly) { toast('No podés editar este calendario'); return; }
+  const ownerCal = typeof getOwnerCalendar === 'function' ? getOwnerCalendar() : currentCal;
+  if (!ownerCal || ownerCal.readonly) { toast('No podés editar Mi calendario ahora mismo'); return; }
   if (!patternSeq.length) { toast('Añadí turnos a la secuencia'); return; }
 
   const mode = document.querySelector('input[name="pattern-mode"]:checked').value;
@@ -313,7 +312,8 @@ async function patternApply() {
 function renderPatternsList() {
   const el = document.getElementById('patterns-list');
   const title = document.getElementById('patterns-saved-title');
-  const patterns = (currentCal && currentCal.patterns) || [];
+  const ownerCal = typeof getOwnerCalendar === 'function' ? getOwnerCalendar() : currentCal;
+  const patterns = (ownerCal && ownerCal.patterns) || [];
   if (!patterns.length) {
     el.innerHTML = '';
     title.classList.add('hidden');
@@ -326,13 +326,14 @@ function renderPatternsList() {
         <div class="seq">${pattern.sequence.map(item => `<span class="seq-item shift-${item}">${escapeHtml(item)}</span>`).join('')}</div>
         <small>${escapeHtml(pattern.startDate || '')} → ${escapeHtml(pattern.endDate || '∞')}</small>
       </div>
-      ${currentCal.readonly ? '' : `<button class="btn btn-sm btn-danger" onclick="patternDelete('${pattern.patternId}')">✕</button>`}
+      ${ownerCal?.readonly ? '' : `<button class="btn btn-sm btn-danger" onclick="patternDelete('${pattern.patternId}')">✕</button>`}
     </div>
   `).join('');
 }
 
 async function patternDelete(patternId) {
-  if (!currentCal || currentCal.readonly) return;
+  const ownerCal = typeof getOwnerCalendar === 'function' ? getOwnerCalendar() : currentCal;
+  if (!ownerCal || ownerCal.readonly) return;
   if (!confirm('¿Eliminar este patrón repetitivo?')) return;
   await googleCalendarDeletePattern(patternId);
   renderPatternsList();

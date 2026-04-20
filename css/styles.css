@@ -19,9 +19,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 #app{max-width:500px;margin:0 auto;padding:8px;padding-bottom:env(safe-area-inset-bottom,8px);display:flex;flex-direction:column;height:100%;overflow-y:auto}
 
 /* Header */
-#header{display:flex;justify-content:space-between;align-items:center;padding:10px 0;gap:8px}
+#header{display:flex;justify-content:center;align-items:center;padding:10px 0;gap:8px}
 #header h1{font-size:1.1rem;white-space:nowrap}
-#cal-selector,#theme-select{flex:1;max-width:200px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:.85rem;background:var(--card);color:var(--text);touch-action:manipulation}
+#theme-select{flex:1;max-width:200px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:.85rem;background:var(--card);color:var(--text);touch-action:manipulation}
 #theme-select{max-width:100%}
 
 /* Buttons */
@@ -40,9 +40,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .shift-R{background:var(--shift-r);color:#fff;border-color:var(--shift-r)}
 
 /* Tabs */
-#tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:12px}
-.tab{background:none;border:none;padding:10px 8px;cursor:pointer;font-size:.95rem;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--muted);touch-action:manipulation;flex:1;text-align:center}
-.tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+#tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:12px;overflow-x:auto}
+.calendar-tab{background:none;border:none;padding:10px 8px;cursor:pointer;font-size:.95rem;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--muted);touch-action:manipulation;flex:1;text-align:center;white-space:nowrap}
+.calendar-tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
 .tab-content{display:none}.tab-content.active{display:block}
 #tab-calendar.active{display:flex;flex-direction:column;flex:1}
 
@@ -143,6 +143,10 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 /* FAB */
 .fab{position:fixed;bottom:calc(28px + env(safe-area-inset-bottom,0px));right:12px;width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;border:none;font-size:1.4rem;box-shadow:0 3px 8px rgba(0,0,0,.25);cursor:pointer;z-index:140;display:flex;align-items:center;justify-content:center}
 .fab:active{transform:scale(.92)}
+.fab-actions{position:fixed;right:12px;bottom:calc(92px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column-reverse;gap:10px;z-index:139;align-items:flex-end}
+.fab-mini{display:inline-flex;align-items:center;gap:10px;border:none;border-radius:999px;background:var(--card);color:var(--text);border:1px solid var(--border);padding:10px 14px;box-shadow:0 3px 8px rgba(0,0,0,.18);cursor:pointer;font-size:.85rem}
+.fab-mini-icon{width:20px;text-align:center;font-size:1rem}
+.fab-mini-label{font-weight:600}
 
 /* Scanner */
 #scan-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px}

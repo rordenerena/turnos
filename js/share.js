@@ -39,8 +39,9 @@ function shareParseImportHash(hash) {
 }
 
 async function shareGenerate() {
-  if (!currentCal || currentCal.readonly) { toast('Seleccioná tu calendario'); return; }
-  const icalUrl = currentCal.publicIcalUrl;
+  const ownerCal = typeof getOwnerCalendar === 'function' ? getOwnerCalendar() : currentCal;
+  if (!ownerCal || ownerCal.readonly) { toast('Mi calendario no está disponible todavía'); return; }
+  const icalUrl = ownerCal.publicIcalUrl;
   if (!icalUrl) { toast('Todavía no está listo el enlace público'); return; }
   const url = shareBuildImportUrl(icalUrl, {
     ownerName: googleProfile?.name,
@@ -392,7 +393,7 @@ function renameImported(id) {
 
   if (currentCal && currentCal.id === id) currentCal = storeBuildImportedSource(updatedMeta);
   renderImportedList();
-  renderCalSelector();
+  renderCalendarTabs();
   calRender();
 
   const hasAlias = !!storeCleanImportedAlias(updatedMeta.aliasName);
@@ -412,7 +413,7 @@ async function shareCheckUrl() {
   const imported = await shareImportByUrl(payload);
   currentCal = imported;
   storeSetActive(imported.id);
-  renderCalSelector();
+  renderCalendarTabs();
   renderImportedList();
   calRender();
   switchTab('calendar');
@@ -485,7 +486,7 @@ function removeImported(id) {
     if (currentCal) storeSetActive(currentCal.id);
   }
   renderImportedList();
-  renderCalSelector();
+  renderCalendarTabs();
   calRender();
   toast('Calendario eliminado');
 }

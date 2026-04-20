@@ -2,6 +2,8 @@
 
 let _headerTaps = 0;
 let _headerTimer = null;
+const VIEW_KEY = 'turnos_view';
+let fabMenuOpen = false;
 
 function headerTap() {
   _headerTaps++;
@@ -45,10 +47,80 @@ function showUpdateToast() {
   clearTimeout(el._t);
 }
 
+function getOwnerCalendar() {
+  if (googleOwnerCalendar) return googleOwnerCalendar;
+  if (currentCal && !currentCal.readonly) return currentCal;
+  return null;
+}
+
+function currentVisibleTab() {
+  return localStorage.getItem(VIEW_KEY) || 'calendar';
+}
+
+function showCalendar(id) {
+  const targetId = id || currentCal?.id || getOwnerCalendar()?.id;
+  if (targetId) selectCalendar(targetId);
+  switchTab('calendar');
+}
+
+function renderCalendarTabs() {
+  const tabs = document.getElementById('tabs');
+  if (!tabs) return;
+
+  const items = [];
+  if (googleOwnerCalendar) items.push({ id: googleOwnerCalendar.id, name: 'Mi calendario' });
+  storeGetImported().forEach(meta => items.push({ id: meta.id, name: storeImportedCalendarName(meta) }));
+
+  tabs.classList.toggle('hidden', items.length <= 1);
+  tabs.innerHTML = items.map(item => `
+    <button
+      type="button"
+      class="calendar-tab${currentCal && currentCal.id === item.id ? ' active' : ''}"
+      onclick="showCalendar('${item.id}')"
+    >${escapeHtml(item.name)}</button>
+  `).join('');
+}
+
+function syncOwnerActionCopy() {
+  const owner = getOwnerCalendar();
+  const ownerName = owner?.name || 'Mi calendario';
+  const patternCopy = document.getElementById('pattern-owner-context');
+  const shareCopy = document.getElementById('share-owner-context');
+  if (patternCopy) patternCopy.textContent = `Estas acciones se aplican siempre sobre ${ownerName}.`;
+  if (shareCopy) shareCopy.textContent = `Vas a compartir siempre ${ownerName}, aunque estés viendo otro calendario.`;
+}
+
+function closeFabMenu() {
+  fabMenuOpen = false;
+  document.getElementById('fab-actions')?.classList.add('hidden');
+  const fabMain = document.getElementById('fab-main');
+  if (fabMain) {
+    fabMain.textContent = '+';
+    fabMain.setAttribute('aria-expanded', 'false');
+  }
+}
+
+function toggleFabMenu() {
+  fabMenuOpen = !fabMenuOpen;
+  document.getElementById('fab-actions')?.classList.toggle('hidden', !fabMenuOpen);
+  const fabMain = document.getElementById('fab-main');
+  if (fabMain) {
+    fabMain.textContent = fabMenuOpen ? '×' : '+';
+    fabMain.setAttribute('aria-expanded', fabMenuOpen ? 'true' : 'false');
+  }
+}
+
+function fabSelectAction(action) {
+  closeFabMenu();
+  if (action === 'scan') {
+    scanOpen();
+    return;
+  }
+  switchTab(action);
+}
+
 function switchTab(tab) {
-  if (currentCal && currentCal.readonly && ['patterns', 'shared', 'settings'].includes(tab)) tab = 'calendar';
-  localStorage.setItem('turnos_tab', tab);
-  document.querySelectorAll('.tab').forEach(item => item.classList.toggle('active', item.dataset.tab === tab));
+  localStorage.setItem(VIEW_KEY, tab);
   document.querySelectorAll('.tab-content').forEach(item => item.classList.toggle('active', item.id === `tab-${tab}`));
 
   if (tab === 'shared') {
@@ -68,16 +140,11 @@ function switchTab(tab) {
     document.getElementById('google-user-name').textContent = sessionIdentity ? `👤 ${sessionIdentity}` : 'Sin sesión';
     document.getElementById('owner-feed-url').textContent = googleOwnerCalendar?.publicIcalUrl || 'Pendiente';
   }
-}
-
-function currentVisibleTab() {
-  return document.querySelector('.tab.active')?.dataset.tab || localStorage.getItem('turnos_tab') || 'calendar';
+  syncOwnerActionCopy();
 }
 
 function ensureWritableTabVisibility() {
-  if (!currentCal || !currentCal.readonly) return;
-  const tab = currentVisibleTab();
-  if (tab === 'patterns' || tab === 'shared' || tab === 'settings') switchTab('calendar');
+  return currentVisibleTab();
 }
 
 async function restoreActiveSource(savedActiveId) {
@@ -92,25 +159,14 @@ async function restoreActiveSource(savedActiveId) {
   }
 }
 
-function renderCalSelector() {
-  const sel = document.getElementById('cal-selector');
-  const items = [];
-  if (googleOwnerCalendar) items.push(googleOwnerCalendar);
-  items.push(...storeGetCachedSources());
-  const activeId = currentCal ? currentCal.id : storeGetActive();
-  sel.innerHTML = items.map(item => `
-    <option value="${item.id}"${item.id === activeId ? ' selected' : ''}>${item.readonly ? '👁' : '✏️'} ${escapeHtml(item.name)}</option>
-  `).join('');
-}
-
 async function selectCalendar(id) {
   if (googleOwnerCalendar && id === googleOwnerCalendar.id) {
     currentCal = googleOwnerCalendar;
     storeSetActive(id);
-    ensureWritableTabVisibility();
-    renderCalSelector();
+    renderCalendarTabs();
     calRender();
     renderPatternsList();
+    syncOwnerActionCopy();
     return;
   }
 
@@ -118,14 +174,13 @@ async function selectCalendar(id) {
   if (!importedMeta) return;
   currentCal = storeBuildImportedSource(importedMeta);
   storeSetActive(id);
-  ensureWritableTabVisibility();
-  renderCalSelector();
+  renderCalendarTabs();
   calRender();
   try {
     currentCal = await shareRefreshImportedCalendar(id, { silent: true });
-    ensureWritableTabVisibility();
-    renderCalSelector();
+    renderCalendarTabs();
     calRender();
+    syncOwnerActionCopy();
   } catch (error) {
     toast(`No se pudo refrescar el iCal: ${error.message}`);
   }
@@ -181,19 +236,20 @@ async function bootstrapAuthorizedApp() {
   const hasUrlImport = (location.hash || '').startsWith('#ical=');
   currentCal = await googleCalendarBootstrap();
   storeSetActive(currentCal.id);
-  renderCalSelector();
+  renderCalendarTabs();
   calRender();
   renderPatternsList();
   renderImportedList();
+  syncOwnerActionCopy();
 
   if (!hasUrlImport) {
     const restored = await restoreActiveSource(savedActiveId);
     if (!restored) storeSetActive(currentCal.id);
   }
 
-  const savedTab = localStorage.getItem('turnos_tab');
+  const savedTab = localStorage.getItem(VIEW_KEY);
   if (savedTab) switchTab(savedTab);
-  ensureWritableTabVisibility();
+  else switchTab('calendar');
 
   if (hasUrlImport) {
     try {
@@ -245,6 +301,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 let _scanner = null;
 function scanOpen() {
+  closeFabMenu();
   document.getElementById('scan-overlay').classList.remove('hidden');
   _scanner = new Html5Qrcode('scan-reader');
   _scanner.start(

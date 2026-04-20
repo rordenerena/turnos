@@ -344,7 +344,7 @@ async function googleCalendarRefreshOwner(options = {}) {
   if (!currentCal || !currentCal.readonly || currentCal.id === googleOwnerCalendar.id) {
     currentCal = googleOwnerCalendar;
   }
-  renderCalSelector();
+  renderCalendarTabs();
   calRender();
   if (!options.silent) renderImportedList();
   return googleOwnerCalendar;
