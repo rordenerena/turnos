@@ -137,6 +137,14 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .imported-item .imp-actions{flex-shrink:0;align-self:center;display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
 .imported-item .imp-actions .btn{display:inline-flex;align-items:center;justify-content:center}
 
+/* Dialogs */
+.dialog-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:180;padding:16px}
+.dialog-card{background:var(--card);color:var(--text);border-radius:12px;border:1px solid var(--border);width:100%;max-width:360px;padding:16px;box-shadow:0 10px 24px rgba(0,0,0,.18)}
+.dialog-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.dialog-header h3{font-size:1rem}
+.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+#rename-import-input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:.95rem;background:var(--card);color:var(--text)}
+
 /* Modal */
 #modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
 #modal{background:var(--card);border-radius:12px;width:100%;max-width:400px;padding:16px;max-height:80vh;overflow-y:auto;color:var(--text)}

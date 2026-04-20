@@ -116,7 +116,7 @@
           </button>
         </div>
         <div class="primary-drawer-footer">
-          <span class="drawer-version">v21/04/2026 01:29</span>
+          <span class="drawer-version">v21/04/2026 01:34</span>
         </div>
       </aside>
     </div>
@@ -234,6 +234,30 @@
         <div id="scan-reader"></div>
       </div>
     </section>
+
+    <div id="rename-import-overlay" class="dialog-overlay hidden" onclick="renameImportedModalCancel(event)">
+      <div class="dialog-card">
+        <div class="dialog-header">
+          <h3>Renombrar calendario</h3>
+          <button class="btn btn-sm btn-ghost icon-button" type="button" onclick="renameImportedModalCancel()" aria-label="Cerrar diálogo">
+            <span class="icon-inline" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6L6 18"></path>
+                <path d="M6 6l12 12"></path>
+              </svg>
+            </span>
+          </button>
+        </div>
+        <p class="hint" id="rename-import-hint"></p>
+        <form onsubmit="renameImportedModalSave(event)">
+          <input id="rename-import-input" type="text" maxlength="120" autocomplete="off" placeholder="Nombre visible">
+          <div class="dialog-actions">
+            <button class="btn" type="button" onclick="renameImportedModalCancel()">Cancelar</button>
+            <button class="btn btn-primary" type="submit">Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <!-- Day Modal -->
     <div id="modal-overlay" class="hidden" onclick="modalCancel(event)">

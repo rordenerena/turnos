@@ -38,6 +38,33 @@ function shareParseImportHash(hash) {
   };
 }
 
+let renameImportedModalState = null;
+const importedRefreshState = {};
+const importedRefreshResetTimers = {};
+
+function getImportedRefreshState(id) {
+  return importedRefreshState[id] || 'idle';
+}
+
+function setImportedRefreshState(id, status) {
+  importedRefreshState[id] = status;
+  clearTimeout(importedRefreshResetTimers[id]);
+  renderImportedList();
+  if (status === 'success' || status === 'error') {
+    importedRefreshResetTimers[id] = setTimeout(() => {
+      if (importedRefreshState[id] !== status) return;
+      importedRefreshState[id] = 'idle';
+      renderImportedList();
+    }, 1400);
+  }
+}
+
+function clearImportedRefreshState(id) {
+  clearTimeout(importedRefreshResetTimers[id]);
+  delete importedRefreshResetTimers[id];
+  delete importedRefreshState[id];
+}
+
 async function shareGenerate(options = {}) {
   const { toastSuccess = true, toastError = true } = options;
   const ownerCal = typeof getOwnerCalendar === 'function' ? getOwnerCalendar() : currentCal;
@@ -387,17 +414,39 @@ function renameImported(id) {
 
   const currentAlias = storeCleanImportedAlias(meta.aliasName);
   const automaticName = storeImportedCalendarAutoName(meta);
-  const nextAlias = prompt(
-    `Nombre visible para este calendario.\n\nDejá vacío para volver a \"${automaticName}\".`,
-    currentAlias || automaticName,
-  );
-  if (nextAlias === null) return;
+  renameImportedModalState = { id, automaticName };
+  const overlay = document.getElementById('rename-import-overlay');
+  const hint = document.getElementById('rename-import-hint');
+  const input = document.getElementById('rename-import-input');
+  if (hint) hint.textContent = `Dejá el nombre vacío para volver a "${automaticName}".`;
+  if (input) {
+    input.value = currentAlias;
+    input.placeholder = automaticName;
+  }
+  overlay?.classList.remove('hidden');
+  setTimeout(() => input?.focus(), 0);
+}
+
+function renameImportedModalCancel(event) {
+  if (event && event.target && event.target.id !== 'rename-import-overlay') return;
+  renameImportedModalState = null;
+  document.getElementById('rename-import-overlay')?.classList.add('hidden');
+}
+
+function renameImportedModalSave(event) {
+  event?.preventDefault();
+  if (!renameImportedModalState) return;
+  const { id } = renameImportedModalState;
+  const input = document.getElementById('rename-import-input');
+  const nextAlias = input ? input.value.trim() : '';
 
   const updatedMeta = storeSaveImportedAlias(id, nextAlias);
   if (!updatedMeta) {
     toast('No existe ese calendario');
     return;
   }
+
+  renameImportedModalCancel();
 
   if (currentCal && currentCal.id === id) currentCal = storeBuildImportedSource(updatedMeta);
   renderImportedList();
@@ -448,7 +497,9 @@ function renderImportedList() {
     return;
   }
 
-  el.innerHTML = imports.map(meta => `
+  el.innerHTML = imports.map(meta => {
+      const refreshState = getImportedRefreshState(meta.id);
+      return `
       <div class="imported-item">
         <div class="imp-body">
           <div class="imp-name">👁 ${escapeHtml(storeImportedCalendarName(meta))}${calItemCount(meta)}</div>
@@ -457,23 +508,31 @@ function renderImportedList() {
         </div>
         <div class="imp-actions">
           <button class="btn btn-sm icon-button" onclick="renameImported('${meta.id}')" title="Renombrar calendario importado" aria-label="Renombrar calendario importado">${appIconSpan('edit')}</button>
-          <button class="btn btn-sm icon-button" onclick="refreshImported('${meta.id}')" title="Actualizar calendario importado" aria-label="Actualizar calendario importado">${appIconSpan('refresh')}</button>
+          <button class="btn btn-sm icon-button readonly-banner-refresh imported-refresh-button" data-state="${refreshState}" onclick="refreshImported('${meta.id}')" title="Actualizar calendario importado" aria-label="Actualizar calendario importado">${readonlyBannerRefreshMarkup(refreshState)}</button>
           <button class="btn btn-sm btn-primary" onclick="selectCalendar('${meta.id}');switchTab('calendar')">Ver</button>
           <button class="btn btn-sm btn-danger" onclick="removeImported('${meta.id}')">✕</button>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 async function refreshImported(id) {
+  if (getImportedRefreshState(id) === 'refreshing') return;
   try {
-    await shareRefreshImportedAction(id);
+    await shareRefreshImportedAction(id, {
+      silent: true,
+      toastSuccess: false,
+      toastError: true,
+      onStateChange: status => setImportedRefreshState(id, status),
+    });
   } catch {
     // El feedback ya se muestra dentro de shareRefreshImportedAction.
   }
 }
 
 function removeImported(id) {
+  clearImportedRefreshState(id);
   storeDeleteImported(id);
   if (currentCal && currentCal.id === id) {
     currentCal = googleOwnerCalendar;
