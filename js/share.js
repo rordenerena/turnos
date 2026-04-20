@@ -38,11 +38,18 @@ function shareParseImportHash(hash) {
   };
 }
 
-async function shareGenerate() {
+async function shareGenerate(options = {}) {
+  const { toastSuccess = true, toastError = true } = options;
   const ownerCal = typeof getOwnerCalendar === 'function' ? getOwnerCalendar() : currentCal;
-  if (!ownerCal || ownerCal.readonly) { toast('Mi calendario no está disponible todavía'); return; }
+  if (!ownerCal || ownerCal.readonly) {
+    if (toastError) toast('Mi calendario no está disponible todavía');
+    return false;
+  }
   const icalUrl = ownerCal.publicIcalUrl;
-  if (!icalUrl) { toast('Todavía no está listo el enlace público'); return; }
+  if (!icalUrl) {
+    if (toastError) toast('Todavía no está listo el enlace público');
+    return false;
+  }
   const url = shareBuildImportUrl(icalUrl, {
     ownerName: googleProfile?.name,
     ownerEmail: googleProfile?.email,
@@ -50,7 +57,8 @@ async function shareGenerate() {
   await QRCode.toCanvas(document.getElementById('qr-canvas'), url, { width: 250, margin: 2, errorCorrectionLevel: 'L' });
   document.getElementById('share-url').textContent = url;
   document.getElementById('qr-container').classList.remove('hidden');
-  toast('QR generado ✓');
+  if (toastSuccess) toast('QR generado ✓');
+  return true;
 }
 
 function shareCopyLink() {

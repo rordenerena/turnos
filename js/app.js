@@ -5,9 +5,9 @@ let _headerTimer = null;
 const VIEW_KEY = 'turnos_view';
 const HEADER_VIEW_CONFIG = {
   calendar: { title: '📅 Turnos', button: 'menu' },
-  patterns: { title: 'Patrones', button: 'back' },
-  shared: { title: 'Compartir', button: 'back' },
-  settings: { title: 'Configuración', button: 'back' }
+  patterns: { title: 'Patrones', button: 'menu' },
+  shared: { title: 'Compartir', button: 'menu' },
+  settings: { title: 'Configuración', button: 'menu' }
 };
 let fabMenuOpen = false;
 let primaryDrawerOpen = false;
@@ -94,7 +94,7 @@ function syncOwnerActionCopy() {
   const patternCopy = document.getElementById('pattern-owner-context');
   const shareCopy = document.getElementById('share-owner-context');
   if (patternCopy) patternCopy.textContent = `Estas acciones se aplican siempre sobre ${ownerName}.`;
-  if (shareCopy) shareCopy.textContent = `Vas a compartir siempre ${ownerName}, aunque estés viendo otro calendario.`;
+  if (shareCopy) shareCopy.textContent = '';
 }
 
 function fabMainIconMarkup(isOpen) {
@@ -199,7 +199,7 @@ function switchTab(tab) {
 
   if (tab === 'shared') {
     renderImportedList();
-    document.getElementById('qr-container').classList.add('hidden');
+    shareGenerate({ toastSuccess: false, toastError: false }).catch(error => console.warn('No se pudo preparar el QR de compartir', error));
   }
   if (tab === 'patterns') {
     renderPatternsList();
