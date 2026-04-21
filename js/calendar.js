@@ -228,7 +228,8 @@ function calRender() {
 function renderCalendarDay(ds, dayNumber, todayStr, isCurrentMonth) {
   const shifts = getDayShifts(ds);
   const evts = getDayEvents(ds);
-  let html = `<div class="cal-day${ds === todayStr ? ' today' : ''}${isCurrentMonth ? '' : ' adjacent-month'}" onclick="dayClick('${ds}')">`;
+  const isPastDay = ds < todayStr;
+  let html = `<div class="cal-day${ds === todayStr ? ' today' : ''}${isCurrentMonth ? '' : ' adjacent-month'}${isPastDay ? ' past' : ''}" onclick="dayClick('${ds}')">`;
   html += `<div class="day-num">${dayNumber}</div>`;
   if (shifts.length) {
     html += '<div class="day-shifts">';
