@@ -3,7 +3,7 @@
   --bg:#f5f5f5;--card:#fff;--text:#222;--muted:#888;--border:#ddd;
   --primary:#0a0a0a;--primary-contrast:#fff;--accent:#34a853;--header-bg:#0a0a0a;--header-control-bg:rgba(255,255,255,.12);--today-bg:#f2f2f2;
   --readonly-banner-bg:#eef6ff;--readonly-banner-text:#1f3a5f;--readonly-banner-border:#bfd7f2;--readonly-banner-button-bg:rgba(255,255,255,.78);--readonly-banner-button-hover:#dcecff;--readonly-banner-button-text:#24476f;--readonly-banner-success:#216e39;--readonly-banner-error:#b3261e;
-  --shift-m:#ff9800;--shift-t:#2196f3;--shift-n:#9c27b0;--shift-l:#4caf50;--shift-r:#e53935;
+  --shift-m:#ff9800;--shift-t:#2196f3;--shift-n:#9c27b0;--shift-l:#4caf50;--shift-r:#e53935;--shift-v:#7c5cff;
   --radius:8px;
 }
 @media(prefers-color-scheme:dark){
@@ -63,6 +63,14 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .shift-N{background:var(--shift-n);color:#fff;border-color:var(--shift-n)}
 .shift-L{background:var(--shift-l);color:#fff;border-color:var(--shift-l)}
 .shift-R{background:var(--shift-r);color:#fff;border-color:var(--shift-r)}
+.shift-V{
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.34), rgba(255,255,255,0) 42%),
+    linear-gradient(115deg, #7c5cff 0%, #2ec5ff 28%, #7effc6 52%, #ffd166 76%, #ff78c9 100%);
+  color:#1f1338;
+  border-color:#7c5cff;
+  text-shadow:0 1px 0 rgba(255,255,255,.25);
+}
 
 /* Tabs */
 #tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin:12px 12px 0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none}
@@ -107,6 +115,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .cal-day .day-shift.s-N{background:var(--shift-n)}
 .cal-day .day-shift.s-L{background:var(--shift-l)}
 .cal-day .day-shift.s-R{background:var(--shift-r)}
+.cal-day .day-shift.s-V{
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.28), rgba(255,255,255,0) 40%),
+    linear-gradient(115deg, #7c5cff 0%, #2ec5ff 28%, #7effc6 52%, #ffd166 76%, #ff78c9 100%);
+  color:#1f1338;
+  text-shadow:0 1px 0 rgba(255,255,255,.25);
+}
 .cal-day .day-shift small{font-weight:400;font-size:.55rem;opacity:.9}
 .cal-day .day-events{font-size:.6rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cal-day .event-dot{display:inline-block;width:5px;height:5px;background:var(--accent);border-radius:50%;margin-right:2px;vertical-align:middle}

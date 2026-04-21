@@ -230,7 +230,7 @@ function calRender() {
 }
 
 function sortShifts(a, b) {
-  const order = { M: 0, T: 1, N: 2, R: 3, L: 4 };
+  const order = { M: 0, T: 1, N: 2, R: 3, V: 4, L: 5 };
   return (order[a.type] ?? 10) - (order[b.type] ?? 10);
 }
 

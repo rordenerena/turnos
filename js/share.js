@@ -185,7 +185,7 @@ function icalParseRRule(rrule) {
 }
 
 function icalShiftSummary(summary) {
-  return ['M', 'T', 'N', 'L', 'R'].includes(summary) ? summary : null;
+  return ['M', 'T', 'N', 'L', 'R', 'V'].includes(summary) ? summary : null;
 }
 
 function googleCalendarIdFromIcalUrl(icalUrl) {
