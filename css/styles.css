@@ -38,7 +38,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .primary-drawer-close,.primary-drawer-header-spacer{width:40px;height:40px}
 .primary-drawer-close{border:none;border-radius:10px;background:transparent;color:var(--text);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
 .primary-drawer-close:active{transform:scale(.96)}
-.primary-drawer-actions{display:flex;flex-direction:column;gap:10px}
+.primary-drawer-actions{display:flex;flex:1;flex-direction:column;gap:10px}
+.drawer-action-bottom{margin-top:auto}
 .primary-drawer-footer{margin-top:auto;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:flex-start}
 .drawer-version{font-size:.72rem;color:var(--muted)}
 .drawer-action{width:100%;display:flex;align-items:center;gap:12px;text-align:left;border:none;background:transparent;color:var(--text);border-radius:12px;padding:12px 8px;font-size:.95rem;font-weight:600;cursor:pointer}
