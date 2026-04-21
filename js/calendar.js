@@ -5,6 +5,7 @@ let calYear, calMonth;
 let selectedDate = null;
 let patternDays = [];
 let patternCurrentDay = [];
+let patternDeletingId = null;
 let readonlyBannerRefreshState = { calendarId: null, status: 'idle', resetTimer: null };
 const READONLY_BANNER_VISIBILITY_KEY = 'turnos_readonly_banner_visibility';
 const readonlyBannerHiddenByCalendar = loadReadonlyBannerHiddenByCalendar();
@@ -63,6 +64,11 @@ function readonlyBannerRefreshMarkup(status) {
   if (status === 'success') return appIconSpan('success');
   if (status === 'error') return appIconSpan('warning');
   return appIconSpan('refresh');
+}
+
+function patternDeleteButtonMarkup(patternId) {
+  const deleting = patternDeletingId === patternId;
+  return `<button class="btn btn-sm btn-danger pattern-delete-button" onclick="patternDelete('${patternId}')" ${deleting ? 'disabled aria-busy="true"' : ''} title="Eliminar patrón" aria-label="Eliminar patrón">${deleting ? '<span class="readonly-banner-spinner" aria-hidden="true"></span>' : '✕'}</button>`;
 }
 
 async function readonlyBannerRefreshCurrent(event) {
@@ -528,7 +534,7 @@ function renderPatternsList() {
         <div class="seq">${(pattern.days || []).map((day, index) => patternRenderDayGroup(day, index)).join('')}</div>
         <small>${escapeHtml(pattern.startDate || '')} → ${escapeHtml(pattern.endDate || '∞')}</small>
       </div>
-      ${ownerCal?.readonly ? '' : `<button class="btn btn-sm btn-danger" onclick="patternDelete('${pattern.patternId}')">✕</button>`}
+      ${ownerCal?.readonly ? '' : patternDeleteButtonMarkup(pattern.patternId)}
     </div>
   `).join('');
 }
@@ -536,8 +542,17 @@ function renderPatternsList() {
 async function patternDelete(patternId) {
   const ownerCal = typeof getOwnerCalendar === 'function' ? getOwnerCalendar() : currentCal;
   if (!ownerCal || ownerCal.readonly) return;
+  if (patternDeletingId) return;
   if (!confirm('¿Eliminar este patrón repetitivo?')) return;
-  await googleCalendarDeletePattern(patternId);
+  patternDeletingId = patternId;
   renderPatternsList();
-  toast('Patrón eliminado');
+  try {
+    await googleCalendarDeletePattern(patternId);
+    toast('Patrón eliminado');
+  } catch (error) {
+    toast(`No se pudo eliminar el patrón: ${error.message}`);
+  } finally {
+    patternDeletingId = null;
+    renderPatternsList();
+  }
 }

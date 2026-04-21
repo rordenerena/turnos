@@ -159,6 +159,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .pattern-item .seq .pattern-day-header{font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .pattern-item .seq .pattern-day-shifts{display:flex;gap:4px;flex-wrap:wrap}
 .pattern-item .seq .seq-item{min-width:28px;text-align:center;padding:2px 8px;border-radius:4px;color:#fff;font-weight:700;font-size:.8rem}
+.pattern-delete-button{min-width:32px;min-height:32px;display:inline-flex;align-items:center;justify-content:center}
+.pattern-delete-button[disabled]{cursor:wait;opacity:.8}
 
 /* Share */
 #qr-container{text-align:center;margin:12px 0}
