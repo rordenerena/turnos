@@ -163,31 +163,27 @@ function calRender() {
   let startDay = first.getDay() - 1;
   if (startDay < 0) startDay = 6;
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const prevMonthDays = new Date(calYear, calMonth, 0).getDate();
+  const totalCells = Math.ceil((startDay + daysInMonth) / 7) * 7;
+  const trailingDays = totalCells - startDay - daysInMonth;
   const todayStr = isoDate(new Date());
 
   let html = '';
-  for (let i = 0; i < startDay; i++) html += '<div class="cal-day empty"></div>';
+  for (let i = 0; i < startDay; i++) {
+    const day = prevMonthDays - startDay + i + 1;
+    const ds = isoDate(new Date(calYear, calMonth - 1, day));
+    html += renderCalendarDay(ds, day, todayStr, false);
+  }
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = dateStr(calYear, calMonth, d);
-    const shifts = getDayShifts(ds);
-    const evts = getDayEvents(ds);
-    html += `<div class="cal-day${ds === todayStr ? ' today' : ''}" onclick="dayClick('${ds}')">`;
-    html += `<div class="day-num">${d}</div>`;
-    if (shifts.length) {
-      html += '<div class="day-shifts">';
-      shifts.forEach(s => {
-        const note = s.note ? ` <small>${escapeHtml(s.note)}</small>` : '';
-        html += `<div class="day-shift s-${escapeHtml(s.type)}">${escapeHtml(s.type)}${note}</div>`;
-      });
-      html += '</div>';
-    }
-    if (evts.length) {
-      html += `<div class="day-events"><span class="event-dot"></span>${escapeHtml(evts.length > 1 ? String(evts.length) : truncateText(evts[0].text, 10))}</div>`;
-    }
-    html += '</div>';
+    html += renderCalendarDay(ds, d, todayStr, true);
+  }
+  for (let d = 1; d <= trailingDays; d++) {
+    const ds = isoDate(new Date(calYear, calMonth + 1, d));
+    html += renderCalendarDay(ds, d, todayStr, false);
   }
   grid.innerHTML = html;
-  grid.style.gridTemplateRows = `repeat(${Math.ceil((startDay + daysInMonth) / 7)}, 1fr)`;
+  grid.style.gridTemplateRows = `repeat(${totalCells / 7}, 1fr)`;
 
   const banner = document.getElementById('readonly-banner');
   const readonly = !!(currentCal && currentCal.readonly);
@@ -227,6 +223,26 @@ function calRender() {
     banner.innerHTML = '';
     banner.classList.add('hidden');
   }
+}
+
+function renderCalendarDay(ds, dayNumber, todayStr, isCurrentMonth) {
+  const shifts = getDayShifts(ds);
+  const evts = getDayEvents(ds);
+  let html = `<div class="cal-day${ds === todayStr ? ' today' : ''}${isCurrentMonth ? '' : ' adjacent-month'}" onclick="dayClick('${ds}')">`;
+  html += `<div class="day-num">${dayNumber}</div>`;
+  if (shifts.length) {
+    html += '<div class="day-shifts">';
+    shifts.forEach(s => {
+      const note = s.note ? ` <small>${escapeHtml(s.note)}</small>` : '';
+      html += `<div class="day-shift s-${escapeHtml(s.type)}">${escapeHtml(s.type)}${note}</div>`;
+    });
+    html += '</div>';
+  }
+  if (evts.length) {
+    html += `<div class="day-events"><span class="event-dot"></span>${escapeHtml(evts.length > 1 ? String(evts.length) : truncateText(evts[0].text, 10))}</div>`;
+  }
+  html += '</div>';
+  return html;
 }
 
 function sortShifts(a, b) {
