@@ -153,26 +153,45 @@ async function googleCalendarEnsurePublicAcl(calendarId) {
   });
 }
 
-async function googleCalendarResolveAppCalendar() {
-  const cached = storeGetOwnerMeta();
-  if (cached?.calendarId) {
-    try {
-      await googleApiFetch(`https://www.googleapis.com/calendar/v3/users/me/calendarList/${encodeURIComponent(cached.calendarId)}`);
-      await googleCalendarEnsurePublicAcl(cached.calendarId);
-      return {
-        ...cached,
-        id: googleCalendarOwnerId(cached.calendarId),
-        readonly: false,
-        sourceType: 'google',
-      };
-    } catch {}
-  }
+function googleCalendarIsAppCalendar(item) {
+  return !!item && item.accessRole === 'owner' && (item.description || '').includes(TURNOS_CALENDAR_MARKER);
+}
 
+function googleCalendarCanonicalSortValue(item) {
+  const summary = String(item?.summary || '').trim().toLocaleLowerCase('es');
+  return [summary !== TURNOS_CALENDAR_SUMMARY.toLocaleLowerCase('es'), summary, String(item?.id || '')];
+}
+
+function googleCalendarCompareCanonicalCandidates(a, b) {
+  const left = googleCalendarCanonicalSortValue(a);
+  const right = googleCalendarCanonicalSortValue(b);
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] < right[index]) return -1;
+    if (left[index] > right[index]) return 1;
+  }
+  return 0;
+}
+
+async function googleCalendarListAppCalendars() {
   const calendars = await googleCalendarListAll('https://www.googleapis.com/calendar/v3/users/me/calendarList', { minAccessRole: 'owner' });
-  let appCalendar = calendars.find(item => (item.description || '').includes(TURNOS_CALENDAR_MARKER) && item.accessRole === 'owner');
+  return calendars.filter(googleCalendarIsAppCalendar).sort(googleCalendarCompareCanonicalCandidates);
+}
+
+function googleCalendarBuildOwnerMeta(calendar) {
+  return {
+    calendarId: calendar.id,
+    publicIcalUrl: googleCalendarBuildIcalUrl(calendar.id),
+    summary: calendar.summary || TURNOS_CALENDAR_SUMMARY,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+async function googleCalendarResolveAppCalendar() {
+  let appCalendars = await googleCalendarListAppCalendars();
+  let appCalendar = appCalendars[0] || null;
 
   if (!appCalendar) {
-    appCalendar = await googleApiFetch('https://www.googleapis.com/calendar/v3/calendars', {
+    await googleApiFetch('https://www.googleapis.com/calendar/v3/calendars', {
       method: 'POST',
       body: JSON.stringify({
         summary: TURNOS_CALENDAR_SUMMARY,
@@ -180,16 +199,17 @@ async function googleCalendarResolveAppCalendar() {
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
       }),
     });
+    appCalendars = await googleCalendarListAppCalendars();
+    appCalendar = appCalendars[0] || null;
+  }
+
+  if (!appCalendar) {
+    throw new Error('No se pudo resolver el calendario de Turnos');
   }
 
   await googleCalendarEnsurePublicAcl(appCalendar.id);
 
-  const meta = {
-    calendarId: appCalendar.id,
-    publicIcalUrl: googleCalendarBuildIcalUrl(appCalendar.id),
-    summary: appCalendar.summary || TURNOS_CALENDAR_SUMMARY,
-    updatedAt: new Date().toISOString(),
-  };
+  const meta = googleCalendarBuildOwnerMeta(appCalendar);
   storeSaveOwnerMeta(meta);
   return {
     ...meta,
