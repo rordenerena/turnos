@@ -114,7 +114,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .cal-day .day-num{font-weight:600;font-size:.7rem}
 .cal-day .day-shifts{display:flex;flex-wrap:wrap;gap:1px;align-items:center;margin-top:6px}
 .cal-day .day-shift{display:inline-flex;justify-content:center;align-items:center;margin-right:1px;padding:1px 3px;border-radius:3px;color:#fff;font-weight:700;font-size:.65rem;min-width:14px}
-.cal-day.past .day-shift{opacity:.5}
+.cal-day.past .day-shift{opacity:.1}
 .cal-day .day-shift.s-M{background:var(--shift-m)}
 .cal-day .day-shift.s-T{background:var(--shift-t)}
 .cal-day .day-shift.s-N{background:var(--shift-n)}
