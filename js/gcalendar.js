@@ -414,8 +414,12 @@ async function googleCalendarReplaceDayContent(ds, nextShifts, nextEvents) {
   const patternShifts = dayShifts.filter(item => item.source?.kind === 'pattern-instance');
   const manualEvents = dayEvents.filter(item => item.source?.kind === 'event');
   const nextHasVacation = nextShifts.some(item => item.type === 'V');
-  const visibleHasVacationOverride = visibleShifts.some(shiftBlocksPattern);
+  const visibleHasVacationOverride = visibleShifts.some(item => item?.type === 'V');
   const shouldCancelPatternShifts = !nextHasVacation && (!visibleHasVacationOverride || nextShifts.length > 0);
+  const patternShiftTypes = new Set(patternShifts.map(item => item.type));
+  const shiftsToCreate = nextHasVacation
+    ? nextShifts.filter(item => item.type === 'V' || !patternShiftTypes.has(item.type))
+    : nextShifts;
 
   for (const item of manualShifts) {
     await googleCalendarDeleteEvent(item.source.eventId);
@@ -428,7 +432,7 @@ async function googleCalendarReplaceDayContent(ds, nextShifts, nextEvents) {
   for (const item of manualEvents) {
     await googleCalendarDeleteEvent(item.source.eventId);
   }
-  for (const shift of nextShifts) {
+  for (const shift of shiftsToCreate) {
     await googleCalendarCreateEvent(googleCalendarShiftPayload(ds, shift));
   }
   for (const event of nextEvents) {

@@ -234,14 +234,11 @@ function sortShifts(a, b) {
   return (order[a.type] ?? 10) - (order[b.type] ?? 10);
 }
 
-function shiftBlocksPattern(item) {
-  return !!item && item.type === 'V' && !item.source?.isPatternInstance;
-}
-
 function resolveDayShiftPriority(items) {
   const shifts = (items || []).slice();
-  if (!shifts.some(shiftBlocksPattern)) return shifts.sort(sortShifts);
-  return shifts.filter(item => !item.source?.isPatternInstance).sort(sortShifts);
+  const hasVacation = shifts.some(item => item?.type === 'V');
+  if (!hasVacation) return shifts.sort(sortShifts);
+  return shifts.filter(item => !(item.source?.isPatternInstance && item.type !== 'V')).sort(sortShifts);
 }
 
 function buildShiftVisibilityMap(shiftsByDay) {
