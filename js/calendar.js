@@ -3,7 +3,8 @@
 let currentCal = null;
 let calYear, calMonth;
 let selectedDate = null;
-let patternSeq = [];
+let patternDays = [];
+let patternCurrentDay = [];
 let readonlyBannerRefreshState = { calendarId: null, status: 'idle', resetTimer: null };
 const READONLY_BANNER_VISIBILITY_KEY = 'turnos_readonly_banner_visibility';
 const readonlyBannerHiddenByCalendar = loadReadonlyBannerHiddenByCalendar();
@@ -358,33 +359,105 @@ function setShiftNote(type, note) {
   modalRenderShift();
 }
 
+function patternNormalizeShiftTypes(shifts) {
+  const unique = [...new Set((shifts || []).filter(Boolean))];
+  return unique.sort((a, b) => sortShifts({ type: a }, { type: b }));
+}
+
+function patternBuildDay(shifts) {
+  return { shifts: patternNormalizeShiftTypes(shifts) };
+}
+
+function patternGetEffectiveDays() {
+  const days = patternDays.map(day => patternBuildDay(day.shifts));
+  if (patternCurrentDay.length) days.push(patternBuildDay(patternCurrentDay));
+  return days.filter(day => day.shifts.length > 0);
+}
+
+function patternCurrentDayHasShift(shiftType) {
+  return patternCurrentDay.includes(shiftType);
+}
+
+function patternValidateShiftAddition(shiftType) {
+  if (patternCurrentDayHasShift(shiftType)) return 'Ese turno ya está en el día actual';
+
+  const currentHasExclusive = patternCurrentDay.some(type => type === 'L' || type === 'V');
+  const nextIsExclusive = shiftType === 'L' || shiftType === 'V';
+
+  if (currentHasExclusive) return 'L y V deben ir solos en su día';
+  if (nextIsExclusive && patternCurrentDay.length) return 'No podés mezclar L o V con otros turnos';
+
+  return '';
+}
+
 function patternAdd(shiftType) {
-  patternSeq.push(shiftType);
+  const validationError = patternValidateShiftAddition(shiftType);
+  if (validationError) {
+    toast(validationError);
+    return;
+  }
+  patternCurrentDay = patternNormalizeShiftTypes([...patternCurrentDay, shiftType]);
+  patternRenderSeq();
+}
+
+function patternCloseCurrentDay() {
+  if (!patternCurrentDay.length) {
+    toast('El día actual no tiene turnos');
+    return;
+  }
+  patternDays.push(patternBuildDay(patternCurrentDay));
+  patternCurrentDay = [];
   patternRenderSeq();
 }
 
 function patternRemoveLast() {
-  patternSeq.pop();
+  if (!patternCurrentDay.length) return;
+  patternCurrentDay = patternCurrentDay.slice(0, -1);
+  patternRenderSeq();
+}
+
+function patternRemoveLastDay() {
+  if (!patternDays.length) return;
+  patternDays.pop();
   patternRenderSeq();
 }
 
 function patternClear() {
-  patternSeq = [];
+  patternDays = [];
+  patternCurrentDay = [];
   patternRenderSeq();
 }
 
+function patternRenderDayGroup(day, index, options = {}) {
+  const shifts = patternNormalizeShiftTypes(day?.shifts);
+  const classes = ['pattern-day'];
+  if (options.current) classes.push('pattern-day-current');
+  if (!shifts.length) classes.push('pattern-day-empty');
+  const title = options.current ? 'Día actual' : `Día ${index + 1}`;
+  return `
+    <div class="${classes.join(' ')}">
+      <span class="pattern-day-header">${escapeHtml(title)}</span>
+      <div class="pattern-day-shifts">${shifts.map(item => `<span class="seq-item shift-${item}">${escapeHtml(item)}</span>`).join('')}</div>
+    </div>
+  `;
+}
+
 function patternRenderSeq() {
-  document.getElementById('pattern-sequence').innerHTML = patternSeq.map(item => `<span class="seq-item shift-${item}">${item}</span>`).join('');
+  const sequenceEl = document.getElementById('pattern-sequence');
+  const closedDaysMarkup = patternDays.map((day, index) => patternRenderDayGroup(day, index)).join('');
+  const currentDayMarkup = patternRenderDayGroup({ shifts: patternCurrentDay }, patternDays.length, { current: true });
+  sequenceEl.innerHTML = `${closedDaysMarkup}${currentDayMarkup}`;
   patternSyncDateRange();
 }
 
 function patternIsVacationOnly() {
-  return patternSeq.length > 0 && patternSeq.every(item => item === 'V');
+  const days = patternGetEffectiveDays();
+  return days.length > 0 && days.every(day => day.shifts.every(item => item === 'V'));
 }
 
 function patternDefaultEndDate(startDate) {
   if (!startDate) return '';
-  if (patternIsVacationOnly()) return addDays(startDate, 1);
+  if (patternIsVacationOnly()) return addDays(startDate, Math.max(patternGetEffectiveDays().length - 1, 0));
   const [year, month, day] = startDate.split('-').map(Number);
   return isoDate(new Date(year + 1, month - 1, day));
 }
@@ -409,7 +482,8 @@ function patternModeChange() {
 async function patternApply() {
   const ownerCal = typeof getOwnerCalendar === 'function' ? getOwnerCalendar() : currentCal;
   if (!ownerCal || ownerCal.readonly) { toast('No podés editar Mi calendario ahora mismo'); return; }
-  if (!patternSeq.length) { toast('Añadí turnos a la secuencia'); return; }
+  const days = patternGetEffectiveDays();
+  if (!days.length) { toast('Añadí al menos un día válido al patrón'); return; }
 
   const mode = document.querySelector('input[name="pattern-mode"]:checked').value;
   let startDate = '';
@@ -428,7 +502,7 @@ async function patternApply() {
     endDate = `${month}-${String(new Date(year, monthNumber, 0).getDate()).padStart(2, '0')}`;
   }
 
-  await googleCalendarCreatePattern(patternSeq, startDate, endDate);
+  await googleCalendarCreatePattern(days, startDate, endDate);
   renderPatternsList();
   patternClear();
   document.getElementById('pattern-start').value = '';
@@ -451,7 +525,7 @@ function renderPatternsList() {
   el.innerHTML = patterns.map(pattern => `
     <div class="pattern-item">
       <div>
-        <div class="seq">${pattern.sequence.map(item => `<span class="seq-item shift-${item}">${escapeHtml(item)}</span>`).join('')}</div>
+        <div class="seq">${(pattern.days || []).map((day, index) => patternRenderDayGroup(day, index)).join('')}</div>
         <small>${escapeHtml(pattern.startDate || '')} → ${escapeHtml(pattern.endDate || '∞')}</small>
       </div>
       ${ownerCal?.readonly ? '' : `<button class="btn btn-sm btn-danger" onclick="patternDelete('${pattern.patternId}')">✕</button>`}

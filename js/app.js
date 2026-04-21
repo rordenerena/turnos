@@ -211,6 +211,7 @@ function switchTab(tab) {
   }
   if (tab === 'patterns') {
     renderPatternsList();
+    patternRenderSeq();
     const today = new Date();
     const startDate = isoDate(today);
     document.getElementById('pattern-start').value = startDate;

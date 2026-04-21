@@ -141,13 +141,23 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .row input{flex:1}
 
 /* Pattern */
-#pattern-sequence{display:flex;flex-wrap:wrap;gap:4px;min-height:28px;padding:6px;background:var(--bg);border-radius:var(--radius);margin-bottom:6px}
+#pattern-sequence{display:flex;flex-wrap:wrap;gap:8px;min-height:44px;padding:8px;background:var(--bg);border-radius:var(--radius);margin-bottom:6px;align-items:flex-start}
 #pattern-sequence .seq-item{padding:2px 8px;border-radius:4px;color:#fff;font-weight:700;font-size:.8rem;min-width:28px;text-align:center}
+#pattern-builder-hint{margin-top:0}
+#pattern-sequence .pattern-day{display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid var(--border);border-radius:10px;background:var(--card);min-width:72px}
+#pattern-sequence .pattern-day-header{font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+#pattern-sequence .pattern-day-shifts{display:flex;gap:4px;flex-wrap:wrap}
+#pattern-sequence .pattern-day-current{border-style:dashed}
+#pattern-sequence .pattern-day-empty{opacity:.7}
+#pattern-sequence .pattern-day-empty .pattern-day-shifts::before{content:'Sin turnos';font-size:.75rem;color:var(--muted)}
 #pattern-buttons{display:flex;gap:6px;flex-wrap:wrap}
 #pattern-mode-select{display:flex;gap:16px;margin:8px 0}
 #pattern-mode-select label{display:inline;font-weight:normal;font-size:.85rem}
-.pattern-item{background:var(--card);padding:10px 12px;border-radius:var(--radius);border:1px solid var(--border);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;font-size:.8rem}
-.pattern-item .seq{display:flex;gap:4px;flex-wrap:wrap}
+.pattern-item{background:var(--card);padding:10px 12px;border-radius:var(--radius);border:1px solid var(--border);margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:.8rem}
+.pattern-item .seq{display:flex;gap:8px;flex-wrap:wrap}
+.pattern-item .seq .pattern-day{display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid var(--border);border-radius:10px;background:var(--bg);min-width:72px}
+.pattern-item .seq .pattern-day-header{font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.pattern-item .seq .pattern-day-shifts{display:flex;gap:4px;flex-wrap:wrap}
 .pattern-item .seq .seq-item{min-width:28px;text-align:center;padding:2px 8px;border-radius:4px;color:#fff;font-weight:700;font-size:.8rem}
 
 /* Share */

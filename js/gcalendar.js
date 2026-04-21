@@ -244,6 +244,14 @@ function googleCalendarParseRRuleUntil(recurrence) {
   return `${match[1].slice(0, 4)}-${match[1].slice(4, 6)}-${match[1].slice(6, 8)}`;
 }
 
+function googleCalendarPatternDayIndex(priv) {
+  return Number(priv.turnosDayIndex ?? priv.turnosSequenceIndex ?? 0);
+}
+
+function googleCalendarPatternCycleLength(priv, fallback = 0) {
+  return Number(priv.turnosCycleLength ?? priv.turnosSequenceLength ?? fallback);
+}
+
 function googleCalendarBuildPatterns(patternMasters) {
   const groups = {};
   patternMasters.forEach(event => {
@@ -256,7 +264,7 @@ function googleCalendarBuildPatterns(patternMasters) {
     if (!groups[patternId]) {
       groups[patternId] = {
         patternId,
-        sequenceLength: Number(priv.turnosSequenceLength || 0),
+        cycleLength: googleCalendarPatternCycleLength(priv),
         sources: [],
       };
     }
@@ -264,29 +272,35 @@ function googleCalendarBuildPatterns(patternMasters) {
   });
 
   return Object.values(groups).map(group => {
-    const sequenceLength = group.sequenceLength || group.sources.length;
-    const sequence = new Array(sequenceLength).fill('');
+    const cycleLength = group.cycleLength || group.sources.length;
+    const days = Array.from({ length: cycleLength }, () => ({ shifts: [] }));
     let startDate = null;
     let endDate = null;
     group.sources.forEach(event => {
       const priv = googleCalendarEventPrivate(event);
-      const index = Number(priv.turnosSequenceIndex || 0);
+      const dayIndex = googleCalendarPatternDayIndex(priv);
       const shiftType = priv.turnosShiftType || event.summary || '';
       const eventStart = event.start?.date || null;
-      const candidateStart = eventStart ? addDays(eventStart, -index) : null;
-      sequence[index] = shiftType;
+      const candidateStart = eventStart ? addDays(eventStart, -dayIndex) : null;
+      if (!days[dayIndex]) days[dayIndex] = { shifts: [] };
+      if (!days[dayIndex].shifts.includes(shiftType)) days[dayIndex].shifts.push(shiftType);
       if (!startDate || (candidateStart && candidateStart < startDate)) startDate = candidateStart || startDate;
       const until = googleCalendarParseRRuleUntil(event.recurrence);
       if (!endDate || (until && until > endDate)) endDate = until || endDate;
+    });
+    days.forEach(day => {
+      day.shifts = day.shifts.sort((a, b) => sortShifts({ type: a }, { type: b }));
     });
     return {
       patternId: group.patternId,
       startDate,
       endDate,
-      sequence,
+      cycleLength,
+      days,
       sources: group.sources.map(source => ({
         eventId: source.id,
-        sequenceIndex: Number(googleCalendarEventPrivate(source).turnosSequenceIndex || 0),
+        dayIndex: googleCalendarPatternDayIndex(googleCalendarEventPrivate(source)),
+        cycleLength: googleCalendarPatternCycleLength(googleCalendarEventPrivate(source), cycleLength),
         shiftType: googleCalendarEventPrivate(source).turnosShiftType || source.summary || '',
       })),
     };
@@ -323,8 +337,8 @@ function googleCalendarBuildOwnerSource(meta, expandedEvents, patternMasters) {
         recurringEventId: event.recurringEventId || null,
         originalStartDate: event.originalStartTime?.date || date,
         patternId: priv.turnosPatternId || null,
-        sequenceIndex: Number(priv.turnosSequenceIndex || 0),
-        sequenceLength: Number(priv.turnosSequenceLength || 0),
+        dayIndex: googleCalendarPatternDayIndex(priv),
+        cycleLength: googleCalendarPatternCycleLength(priv),
         shiftType: googleCalendarShiftTypeForEvent(event),
       },
     });
@@ -465,25 +479,25 @@ async function googleCalendarReplaceDayShifts(ds, nextShifts) {
   return googleCalendarReplaceDayContent(ds, nextShifts, ((currentCal && currentCal.events && currentCal.events[ds]) || []).slice());
 }
 
-async function googleCalendarCreatePattern(sequence, startDate, endDate) {
+async function googleCalendarCreatePattern(days, startDate, endDate) {
   const patternId = uuid();
-  const sequenceLength = sequence.length;
-  const creates = sequence.map((shiftType, index) => googleCalendarCreateEvent({
+  const cycleLength = days.length;
+  const creates = days.flatMap((day, dayIndex) => (day.shifts || []).map(shiftType => googleCalendarCreateEvent({
     summary: shiftType,
-    start: { date: addDays(startDate, index) },
-    end: { date: addDays(startDate, index + 1) },
-    recurrence: [`RRULE:FREQ=DAILY;INTERVAL=${sequenceLength};UNTIL=${endDate.replace(/-/g, '')}T235959Z`],
+    start: { date: addDays(startDate, dayIndex) },
+    end: { date: addDays(startDate, dayIndex + 1) },
+    recurrence: [`RRULE:FREQ=DAILY;INTERVAL=${cycleLength};UNTIL=${endDate.replace(/-/g, '')}T235959Z`],
     extendedProperties: {
       private: {
         turnosApp: '1',
         turnosKind: 'pattern',
         turnosPatternId: patternId,
-        turnosSequenceIndex: String(index),
-        turnosSequenceLength: String(sequenceLength),
+        turnosDayIndex: String(dayIndex),
+        turnosCycleLength: String(cycleLength),
         turnosShiftType: shiftType,
       },
     },
-  }));
+  })));
   await Promise.all(creates);
   await googleCalendarRefreshOwner({ silent: true });
 }
