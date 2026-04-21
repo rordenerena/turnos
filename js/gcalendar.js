@@ -274,7 +274,7 @@ function googleCalendarBuildPatterns(patternMasters) {
 }
 
 function googleCalendarBuildOwnerSource(meta, expandedEvents, patternMasters) {
-  const shifts = {};
+  const rawShifts = {};
   const events = {};
 
   expandedEvents.forEach(event => {
@@ -292,11 +292,13 @@ function googleCalendarBuildOwnerSource(meta, expandedEvents, patternMasters) {
       return;
     }
 
-    googleCalendarPush(shifts, date, {
+    const isPatternInstance = !!event.recurringEventId;
+    googleCalendarPush(rawShifts, date, {
       type: googleCalendarShiftTypeForEvent(event),
       note: event.description || '',
       source: {
-        kind: event.recurringEventId ? 'pattern-instance' : 'manual',
+        kind: isPatternInstance ? 'pattern-instance' : 'manual',
+        isPatternInstance,
         eventId: event.id,
         recurringEventId: event.recurringEventId || null,
         originalStartDate: event.originalStartTime?.date || date,
@@ -315,7 +317,8 @@ function googleCalendarBuildOwnerSource(meta, expandedEvents, patternMasters) {
     sourceType: 'google',
     googleCalendarId: meta.calendarId,
     publicIcalUrl: meta.publicIcalUrl,
-    shifts,
+    rawShifts,
+    shifts: buildShiftVisibilityMap(rawShifts),
     events,
     patterns: googleCalendarBuildPatterns(patternMasters),
     lastSyncedAt: new Date().toISOString(),
@@ -404,17 +407,23 @@ async function googleCalendarPatchEvent(eventId, payload) {
 }
 
 async function googleCalendarReplaceDayContent(ds, nextShifts, nextEvents) {
-  const dayShifts = ((currentCal && currentCal.shifts && currentCal.shifts[ds]) || []).slice();
+  const dayShifts = ((currentCal && currentCal.rawShifts && currentCal.rawShifts[ds]) || (currentCal && currentCal.shifts && currentCal.shifts[ds]) || []).slice();
+  const visibleShifts = ((currentCal && currentCal.shifts && currentCal.shifts[ds]) || []).slice();
   const dayEvents = ((currentCal && currentCal.events && currentCal.events[ds]) || []).slice();
   const manualShifts = dayShifts.filter(item => item.source?.kind === 'manual');
   const patternShifts = dayShifts.filter(item => item.source?.kind === 'pattern-instance');
   const manualEvents = dayEvents.filter(item => item.source?.kind === 'event');
+  const nextHasVacation = nextShifts.some(item => item.type === 'V');
+  const visibleHasVacationOverride = visibleShifts.some(shiftBlocksPattern);
+  const shouldCancelPatternShifts = !nextHasVacation && (!visibleHasVacationOverride || nextShifts.length > 0);
 
   for (const item of manualShifts) {
     await googleCalendarDeleteEvent(item.source.eventId);
   }
-  for (const item of patternShifts) {
-    await googleCalendarPatchEvent(item.source.eventId, { status: 'cancelled' });
+  if (shouldCancelPatternShifts) {
+    for (const item of patternShifts) {
+      await googleCalendarPatchEvent(item.source.eventId, { status: 'cancelled' });
+    }
   }
   for (const item of manualEvents) {
     await googleCalendarDeleteEvent(item.source.eventId);

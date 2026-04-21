@@ -229,17 +229,17 @@ function icalBuildSource(meta, text) {
   const shifts = {};
   const events = {};
 
-  function addOccurrence(event, date) {
+  function addOccurrence(event, date, source = {}) {
     const shiftType = icalShiftSummary(event.summary || '');
     if (shiftType) {
-      icalPush(shifts, date, { type: shiftType, note: event.description || '', source: { kind: 'ical' } });
+      icalPush(shifts, date, { type: shiftType, note: event.description || '', source: { kind: 'ical', isPatternInstance: !!source.isPatternInstance } });
     } else {
       icalPush(events, date, { text: event.summary || '', source: { kind: 'ical' } });
     }
   }
 
   singles.forEach(event => {
-    if (event.dtstart >= range.start && event.dtstart < range.endExclusive) addOccurrence(event, event.dtstart);
+    if (event.dtstart >= range.start && event.dtstart < range.endExclusive) addOccurrence(event, event.dtstart, { isPatternInstance: false });
   });
 
   recurring.forEach(event => {
@@ -250,14 +250,16 @@ function icalBuildSource(meta, text) {
     const exdates = new Set(event.exdates || []);
     let cursor = event.dtstart;
     while (cursor <= until && cursor < range.endExclusive) {
-      if (cursor >= range.start && !exdates.has(cursor) && !cancellations.has(`${event.uid}|${cursor}`)) addOccurrence(event, cursor);
+      if (cursor >= range.start && !exdates.has(cursor) && !cancellations.has(`${event.uid}|${cursor}`)) addOccurrence(event, cursor, { isPatternInstance: true });
       cursor = addDays(cursor, interval);
     }
   });
 
   overrides.forEach(event => {
-    if (event.recurrenceId >= range.start && event.recurrenceId < range.endExclusive) addOccurrence(event, event.recurrenceId);
+    if (event.recurrenceId >= range.start && event.recurrenceId < range.endExclusive) addOccurrence(event, event.recurrenceId, { isPatternInstance: true });
   });
+
+  const visibleShifts = buildShiftVisibilityMap(shifts);
 
   return {
     id: meta.id,
@@ -269,12 +271,12 @@ function icalBuildSource(meta, text) {
     icalUrl: meta.icalUrl,
     publicIcalUrl: meta.icalUrl,
     ...identity,
-    shifts,
+    shifts: visibleShifts,
     events,
     patterns: [],
     lastSyncedAt: new Date().toISOString(),
     counts: {
-      shifts: Object.values(shifts).reduce((sum, items) => sum + items.length, 0),
+      shifts: Object.values(visibleShifts).reduce((sum, items) => sum + items.length, 0),
       events: Object.values(events).reduce((sum, items) => sum + items.length, 0),
     },
   };
@@ -293,11 +295,20 @@ function shareBuildGoogleSource(meta, items) {
     const summary = (event.summary || '').trim();
     const shiftType = icalShiftSummary(summary);
     if (shiftType) {
-      icalPush(shifts, date, { type: shiftType, note: event.description || '', source: { kind: 'google-public' } });
+      icalPush(shifts, date, {
+        type: shiftType,
+        note: event.description || '',
+        source: {
+          kind: 'google-public',
+          isPatternInstance: !!event.recurringEventId,
+        },
+      });
       return;
     }
     icalPush(events, date, { text: summary, source: { kind: 'google-public' } });
   });
+
+  const visibleShifts = buildShiftVisibilityMap(shifts);
 
   return {
     id: meta.id,
@@ -309,12 +320,12 @@ function shareBuildGoogleSource(meta, items) {
     icalUrl: meta.icalUrl,
     publicIcalUrl: meta.icalUrl,
     ...identity,
-    shifts,
+    shifts: visibleShifts,
     events,
     patterns: [],
     lastSyncedAt: new Date().toISOString(),
     counts: {
-      shifts: Object.values(shifts).reduce((sum, dayItems) => sum + dayItems.length, 0),
+      shifts: Object.values(visibleShifts).reduce((sum, dayItems) => sum + dayItems.length, 0),
       events: Object.values(events).reduce((sum, dayItems) => sum + dayItems.length, 0),
     },
   };

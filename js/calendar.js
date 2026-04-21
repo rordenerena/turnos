@@ -234,6 +234,25 @@ function sortShifts(a, b) {
   return (order[a.type] ?? 10) - (order[b.type] ?? 10);
 }
 
+function shiftBlocksPattern(item) {
+  return !!item && item.type === 'V' && !item.source?.isPatternInstance;
+}
+
+function resolveDayShiftPriority(items) {
+  const shifts = (items || []).slice();
+  if (!shifts.some(shiftBlocksPattern)) return shifts.sort(sortShifts);
+  return shifts.filter(item => !item.source?.isPatternInstance).sort(sortShifts);
+}
+
+function buildShiftVisibilityMap(shiftsByDay) {
+  const visible = {};
+  Object.entries(shiftsByDay || {}).forEach(([ds, items]) => {
+    const resolved = resolveDayShiftPriority(items);
+    if (resolved.length) visible[ds] = resolved;
+  });
+  return visible;
+}
+
 function dateStr(y, m, d) {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
