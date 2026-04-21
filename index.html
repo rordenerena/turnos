@@ -117,7 +117,7 @@
           </button>
         </div>
         <div class="primary-drawer-footer">
-          <span class="drawer-version">v21/04/2026 02:21</span>
+          <span class="drawer-version">v21/04/2026 02:27</span>
         </div>
       </aside>
     </div>
@@ -155,14 +155,13 @@
             <button class="btn shift-T" onclick="patternAdd('T')">T</button>
             <button class="btn shift-N" onclick="patternAdd('N')">N</button>
             <button class="btn shift-L" onclick="patternAdd('L')">L</button>
-            <button class="btn shift-R" onclick="patternAdd('R')">R</button>
             <button class="btn shift-V" onclick="patternAdd('V')">V</button>
             <button class="btn btn-sm" onclick="patternRemoveLast()">⌫</button>
             <button class="btn btn-sm" onclick="patternClear()">Limpiar</button>
           </div>
         </div>
         <label>Fecha de inicio:</label>
-        <input type="date" id="pattern-start">
+        <input type="date" id="pattern-start" onchange="patternHandleStartDateChange()">
         <div id="pattern-mode-select">
           <label><input type="radio" name="pattern-mode" value="until" checked onchange="patternModeChange()"> Hasta una fecha</label>
           <label><input type="radio" name="pattern-mode" value="month" onchange="patternModeChange()"> Solo un mes</label>

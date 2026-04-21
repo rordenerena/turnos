@@ -212,8 +212,9 @@ function switchTab(tab) {
   if (tab === 'patterns') {
     renderPatternsList();
     const today = new Date();
-    document.getElementById('pattern-start').value = isoDate(today);
-    document.getElementById('pattern-end').value = isoDate(new Date(today.getFullYear() + 1, today.getMonth(), today.getDate()));
+    const startDate = isoDate(today);
+    document.getElementById('pattern-start').value = startDate;
+    document.getElementById('pattern-end').value = patternDefaultEndDate(startDate);
     document.getElementById('pattern-month').value = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
   }
   if (tab === 'settings') {

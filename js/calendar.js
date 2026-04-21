@@ -358,6 +358,29 @@ function patternClear() {
 
 function patternRenderSeq() {
   document.getElementById('pattern-sequence').innerHTML = patternSeq.map(item => `<span class="seq-item shift-${item}">${item}</span>`).join('');
+  patternSyncDateRange();
+}
+
+function patternIsVacationOnly() {
+  return patternSeq.length > 0 && patternSeq.every(item => item === 'V');
+}
+
+function patternDefaultEndDate(startDate) {
+  if (!startDate) return '';
+  if (patternIsVacationOnly()) return addDays(startDate, 1);
+  const [year, month, day] = startDate.split('-').map(Number);
+  return isoDate(new Date(year + 1, month - 1, day));
+}
+
+function patternSyncDateRange() {
+  const startInput = document.getElementById('pattern-start');
+  const endInput = document.getElementById('pattern-end');
+  if (!startInput || !endInput || !startInput.value) return;
+  endInput.value = patternDefaultEndDate(startInput.value);
+}
+
+function patternHandleStartDateChange() {
+  patternSyncDateRange();
 }
 
 function patternModeChange() {

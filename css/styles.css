@@ -68,7 +68,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
     linear-gradient(135deg, rgba(255,255,255,.34), rgba(255,255,255,0) 42%),
     linear-gradient(115deg, #7c5cff 0%, #2ec5ff 28%, #7effc6 52%, #ffd166 76%, #ff78c9 100%);
   color:#1f1338;
-  border-color:#7c5cff;
+  border:1px solid rgba(73,50,134,.45);
   text-shadow:0 1px 0 rgba(255,255,255,.25);
 }
 
@@ -120,6 +120,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
     linear-gradient(135deg, rgba(255,255,255,.28), rgba(255,255,255,0) 40%),
     linear-gradient(115deg, #7c5cff 0%, #2ec5ff 28%, #7effc6 52%, #ffd166 76%, #ff78c9 100%);
   color:#1f1338;
+  border:1px solid rgba(73,50,134,.45);
   text-shadow:0 1px 0 rgba(255,255,255,.25);
 }
 .cal-day .day-shift small{font-weight:400;font-size:.55rem;opacity:.9}
