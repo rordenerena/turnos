@@ -117,7 +117,7 @@
           </button>
         </div>
         <div class="primary-drawer-footer">
-          <span class="drawer-version">v23/04/2026 17:31</span>
+          <span class="drawer-version">v23/04/2026 18:01</span>
           <button class="btn btn-sm drawer-update-button" type="button" onclick="updateSW()" aria-label="Comprobar actualizaciones de la app">
             <span class="icon-inline" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -159,16 +159,13 @@
         <label>Días del ciclo:</label>
         <div id="pattern-builder">
           <div id="pattern-sequence"></div>
-          <p class="hint" id="pattern-builder-hint">Añade turnos al día actual y ciérralo cuando quieras pasar al siguiente.</p>
+          <p class="hint" id="pattern-builder-hint">Añade turnos al día actual. Usa la flecha del bloque para cerrar ese día y empezar el siguiente.</p>
           <div id="pattern-buttons">
             <button class="btn shift-M" onclick="patternAdd('M')">M</button>
             <button class="btn shift-T" onclick="patternAdd('T')">T</button>
             <button class="btn shift-N" onclick="patternAdd('N')">N</button>
             <button class="btn shift-L" onclick="patternAdd('L')">L</button>
             <button class="btn shift-V" onclick="patternAdd('V')">V</button>
-            <button class="btn btn-sm" onclick="patternCloseCurrentDay()">Cerrar día</button>
-            <button class="btn btn-sm" onclick="patternRemoveLast()">⌫ turno</button>
-            <button class="btn btn-sm" onclick="patternRemoveLastDay()">⌫ día</button>
             <button class="btn btn-sm" onclick="patternClear()">Limpiar</button>
           </div>
         </div>
@@ -222,19 +219,6 @@
         <h3>Cuenta Google</h3>
         <p id="google-user-name" class="hint" style="margin:0 0 8px"></p>
         <button class="btn btn-danger btn-sm" onclick="logoutGoogle()">Cerrar sesión</button>
-      </div>
-      <div class="card">
-        <h3>Comprobar actualizaciones de la app</h3>
-        <p class="hint">Busca una versión nueva de la PWA y recarga la aplicación si hay cambios disponibles.</p>
-        <button class="btn btn-primary" type="button" onclick="updateSW()">
-          <span class="icon-inline" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 12a9 9 0 1 1-2.64-6.36"></path>
-              <path d="M21 3v6h-6"></path>
-            </svg>
-          </span>
-          <span>Buscar y aplicar actualización</span>
-        </button>
       </div>
       <div class="card hidden" id="danger-section">
         <h3>Peligro</h3>

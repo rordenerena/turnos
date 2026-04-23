@@ -252,6 +252,13 @@ function googleCalendarPatternCycleLength(priv, fallback = 0) {
   return Number(priv.turnosCycleLength ?? priv.turnosSequenceLength ?? fallback);
 }
 
+function googleCalendarBuildRecurrenceUntil(recurrence, untilDate) {
+  const untilValue = `${String(untilDate || '').replace(/-/g, '')}T235959Z`;
+  return (recurrence || []).map(line => (line.startsWith('RRULE:')
+    ? line.replace(/;UNTIL=\d{8}T\d{6}Z/, '').concat(`;UNTIL=${untilValue}`)
+    : line));
+}
+
 function googleCalendarBuildPatterns(patternMasters) {
   const groups = {};
   patternMasters.forEach(event => {
@@ -299,6 +306,8 @@ function googleCalendarBuildPatterns(patternMasters) {
       days,
       sources: group.sources.map(source => ({
         eventId: source.id,
+        startDate: source.start?.date || null,
+        recurrence: (source.recurrence || []).slice(),
         dayIndex: googleCalendarPatternDayIndex(googleCalendarEventPrivate(source)),
         cycleLength: googleCalendarPatternCycleLength(googleCalendarEventPrivate(source), cycleLength),
         shiftType: googleCalendarEventPrivate(source).turnosShiftType || source.summary || '',
@@ -505,9 +514,17 @@ async function googleCalendarCreatePattern(days, startDate, endDate) {
 async function googleCalendarDeletePattern(patternId) {
   const pattern = (googleOwnerCalendar?.patterns || []).find(item => item.patternId === patternId);
   if (!pattern) return;
+  const today = isoDate(new Date());
+  const yesterday = addDays(today, -1);
   for (const source of pattern.sources) {
     try {
-      await googleCalendarDeleteEvent(source.eventId);
+      if (!source.startDate || source.startDate >= today) {
+        await googleCalendarDeleteEvent(source.eventId);
+      } else {
+        await googleCalendarPatchEvent(source.eventId, {
+          recurrence: googleCalendarBuildRecurrenceUntil(source.recurrence, yesterday),
+        });
+      }
     } catch (error) {
       if (!String(error.message || '').includes('Resource has been deleted')) throw error;
     }

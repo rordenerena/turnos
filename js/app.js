@@ -2,6 +2,7 @@
 
 let _headerTaps = 0;
 let _headerTimer = null;
+let _swUpdateInFlight = null;
 const VIEW_KEY = 'turnos_view';
 const HEADER_VIEW_CONFIG = {
   calendar: { title: '📅 Turnos', button: 'menu' },
@@ -39,19 +40,30 @@ function applyTheme(mode) {
 
 applyTheme(localStorage.getItem('turnos_theme') || 'auto');
 
-function toast(msg) {
+function renderToast(msg, persistent = false) {
   const el = document.getElementById('toast');
   el.innerHTML = msg;
   el.classList.remove('hidden');
   clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.add('hidden'), 3000);
+  if (!persistent) {
+    el._t = setTimeout(() => el.classList.add('hidden'), 3000);
+  }
+}
+
+function toast(msg) {
+  renderToast(msg, false);
 }
 
 function showUpdateToast() {
-  const el = document.getElementById('toast');
-  el.innerHTML = '🆕 Nueva versión disponible <button class="btn btn-sm btn-primary" style="margin-left:8px" onclick="location.reload()">Actualizar</button>';
-  el.classList.remove('hidden');
-  clearTimeout(el._t);
+  renderToast('🆕 Nueva versión disponible <button class="btn btn-sm btn-primary" style="margin-left:8px" onclick="updateSW()">Actualizar</button>', true);
+}
+
+function observeServiceWorker(worker, onStateChange) {
+  if (!worker) return () => {};
+  const handleStateChange = () => onStateChange(worker.state, worker);
+  worker.addEventListener('statechange', handleStateChange);
+  handleStateChange();
+  return () => worker.removeEventListener('statechange', handleStateChange);
 }
 
 function getOwnerCalendar() {
@@ -467,12 +479,105 @@ async function startQrScanner() {
   }
 }
 
-function updateSW() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(regs => {
-      regs.forEach(reg => reg.update().catch(() => {}));
-    });
+async function updateSW() {
+  if (_swUpdateInFlight) return _swUpdateInFlight;
+  if (!('serviceWorker' in navigator)) {
+    toast('Las actualizaciones automáticas no están disponibles en este navegador');
+    return false;
   }
-  toast('Actualizando...');
-  setTimeout(() => location.reload(), 500);
+
+  _swUpdateInFlight = (async () => {
+    renderToast('Buscando actualización...', true);
+
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) {
+      toast('La app aún no tiene service worker registrado');
+      return false;
+    }
+
+    let sawUpdate = false;
+    const resultPromise = new Promise(resolve => {
+      let done = false;
+      const cleanups = [];
+      const finish = (status, message) => {
+        if (done) return;
+        done = true;
+        cleanups.forEach(cleanup => cleanup());
+        if (message) {
+          if (status === 'updated') renderToast(message, true);
+          else toast(message);
+        }
+        resolve(status);
+      };
+
+      const observeWorkerLifecycle = worker => {
+        if (!worker) return;
+        sawUpdate = true;
+        cleanups.push(observeServiceWorker(worker, state => {
+          if (state === 'installing') {
+            renderToast('Descargando nueva versión...', true);
+            return;
+          }
+          if (state === 'installed') {
+            renderToast('Actualización descargada. Activando cambios...', true);
+            return;
+          }
+          if (state === 'activating') {
+            renderToast('Activando nueva versión...', true);
+            return;
+          }
+          if (state === 'activated') {
+            renderToast('Nueva versión activa. Recargando...', true);
+            return;
+          }
+          if (state === 'redundant') {
+            finish('error', 'No se pudo aplicar la actualización');
+          }
+        }));
+      };
+
+      const handleUpdateFound = () => {
+        observeWorkerLifecycle(reg.installing);
+      };
+      reg.addEventListener('updatefound', handleUpdateFound);
+      cleanups.push(() => reg.removeEventListener('updatefound', handleUpdateFound));
+
+      const handleControllerChange = () => {
+        finish('updated', 'Nueva versión activa. Recargando...');
+      };
+      navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange, { once: true });
+      cleanups.push(() => navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange));
+
+      observeWorkerLifecycle(reg.installing || reg.waiting);
+
+      const timeoutId = setTimeout(() => {
+        if (sawUpdate) {
+          finish('timeout', 'La actualización sigue en curso. Si no cambia en unos segundos, vuelve a intentarlo');
+          return;
+        }
+        finish('none', 'La app ya está actualizada');
+      }, 10000);
+      cleanups.push(() => clearTimeout(timeoutId));
+    });
+
+    try {
+      await reg.update();
+    } catch {
+      toast('No se pudo comprobar si hay una actualización');
+      return false;
+    }
+
+    const result = await resultPromise;
+
+    if (result === 'updated') {
+      setTimeout(() => location.reload(), 150);
+      return true;
+    }
+
+    return false;
+  })().finally(() => {
+    _swUpdateInFlight = null;
+  });
+
+  return _swUpdateInFlight;
 }

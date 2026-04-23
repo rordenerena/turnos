@@ -172,12 +172,20 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 #pattern-sequence{display:flex;flex-wrap:wrap;gap:8px;min-height:44px;padding:8px;background:var(--bg);border-radius:var(--radius);margin-bottom:6px;align-items:flex-start}
 #pattern-sequence .seq-item{padding:2px 8px;border-radius:4px;color:#fff;font-weight:700;font-size:.8rem;min-width:28px;text-align:center}
 #pattern-builder-hint{margin-top:0}
-#pattern-sequence .pattern-day{display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid var(--border);border-radius:10px;background:var(--card);min-width:72px}
+#pattern-sequence .pattern-day{position:relative;display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid var(--border);border-radius:10px;background:var(--card);min-width:72px;padding-top:20px}
 #pattern-sequence .pattern-day-header{font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 #pattern-sequence .pattern-day-shifts{display:flex;gap:4px;flex-wrap:wrap}
 #pattern-sequence .pattern-day-current{border-style:dashed}
 #pattern-sequence .pattern-day-empty{opacity:.7}
 #pattern-sequence .pattern-day-empty .pattern-day-shifts::before{content:'Sin turnos';font-size:.75rem;color:var(--muted)}
+#pattern-sequence .pattern-day-actions{position:absolute;top:6px;right:6px;display:flex;gap:6px}
+#pattern-sequence .pattern-day-chip{position:relative;display:inline-flex;align-items:center;justify-content:center;padding:2px 18px 2px 8px;border-radius:999px;color:#fff;font-weight:700;font-size:.8rem;min-width:36px;text-align:center}
+#pattern-sequence .pattern-inline-remove{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border:none;border-radius:999px;background:var(--card);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.18);display:inline-flex;align-items:center;justify-content:center;font-size:.68rem;line-height:1;cursor:pointer;padding:0}
+#pattern-sequence .pattern-day-remove{position:static;width:20px;height:20px;border:1px solid var(--border);box-shadow:none;background:var(--bg)}
+#pattern-sequence .pattern-day-remove:hover,#pattern-sequence .pattern-inline-remove:hover{opacity:.85}
+#pattern-sequence .pattern-day-advance{display:flex;align-items:center;justify-content:center;width:48px;min-height:76px;border:1px dashed var(--border);border-radius:10px;background:var(--card);color:var(--muted);font-size:1.2rem;font-weight:700;cursor:pointer}
+#pattern-sequence .pattern-day-advance:disabled{cursor:not-allowed;opacity:.45}
+#pattern-sequence .pattern-day-advance-icon{display:block;line-height:1}
 #pattern-buttons{display:flex;gap:6px;flex-wrap:wrap}
 #pattern-mode-select{display:flex;gap:16px;margin:8px 0}
 #pattern-mode-select label{display:inline;font-weight:normal;font-size:.85rem}

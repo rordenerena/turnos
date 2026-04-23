@@ -68,7 +68,7 @@ function readonlyBannerRefreshMarkup(status) {
 
 function patternDeleteButtonMarkup(patternId) {
   const deleting = patternDeletingId === patternId;
-  return `<button class="btn btn-sm btn-danger pattern-delete-button" onclick="patternDelete('${patternId}')" ${deleting ? 'disabled aria-busy="true"' : ''} title="Eliminar patrón" aria-label="Eliminar patrón">${deleting ? '<span class="readonly-banner-spinner" aria-hidden="true"></span>' : '✕'}</button>`;
+  return `<button class="btn btn-sm btn-danger pattern-delete-button" onclick="patternDelete('${patternId}')" ${deleting ? 'disabled aria-busy="true"' : ''} title="Detener patrón desde hoy" aria-label="Detener patrón desde hoy">${deleting ? '<span class="readonly-banner-spinner" aria-hidden="true"></span>' : '✕'}</button>`;
 }
 
 async function readonlyBannerRefreshCurrent(event) {
@@ -436,15 +436,29 @@ function patternCloseCurrentDay() {
   patternRenderSeq();
 }
 
-function patternRemoveLast() {
-  if (!patternCurrentDay.length) return;
-  patternCurrentDay = patternCurrentDay.slice(0, -1);
+function patternRemoveShift(dayIndex, shiftType) {
+  if (!shiftType) return;
+  if (dayIndex < patternDays.length) {
+    const day = patternDays[dayIndex];
+    if (!day) return;
+    const nextShifts = day.shifts.filter(type => type !== shiftType);
+    if (!nextShifts.length) {
+      patternDays.splice(dayIndex, 1);
+    } else {
+      patternDays[dayIndex] = patternBuildDay(nextShifts);
+    }
+  } else {
+    patternCurrentDay = patternCurrentDay.filter(type => type !== shiftType);
+  }
   patternRenderSeq();
 }
 
-function patternRemoveLastDay() {
-  if (!patternDays.length) return;
-  patternDays.pop();
+function patternRemoveDay(dayIndex) {
+  if (dayIndex < patternDays.length) {
+    patternDays.splice(dayIndex, 1);
+  } else {
+    patternCurrentDay = [];
+  }
   patternRenderSeq();
 }
 
@@ -460,19 +474,52 @@ function patternRenderDayGroup(day, index, options = {}) {
   if (options.current) classes.push('pattern-day-current');
   if (!shifts.length) classes.push('pattern-day-empty');
   const title = options.current ? 'Día actual' : `Día ${index + 1}`;
+  const removeTitle = options.current ? 'Vaciar día actual' : `Eliminar ${title.toLowerCase()}`;
+  const editable = !!options.editable;
+  const dayRemoveButton = editable ? `
+    <button
+      type="button"
+      class="pattern-inline-remove pattern-day-remove"
+      onclick="patternRemoveDay(${index})"
+      aria-label="${escapeHtml(removeTitle)}"
+      title="${escapeHtml(removeTitle)}"
+    >✕</button>
+  ` : '';
   return `
     <div class="${classes.join(' ')}">
+      ${editable ? `<div class="pattern-day-actions">${dayRemoveButton}</div>` : ''}
       <span class="pattern-day-header">${escapeHtml(title)}</span>
-      <div class="pattern-day-shifts">${shifts.map(item => `<span class="seq-item shift-${item}">${escapeHtml(item)}</span>`).join('')}</div>
+      <div class="pattern-day-shifts">${shifts.map(item => `
+        <span class="seq-item${editable ? ' pattern-day-chip' : ''} shift-${item}">
+          ${escapeHtml(item)}
+          ${editable ? `<button
+            type="button"
+            class="pattern-inline-remove"
+            onclick="patternRemoveShift(${index}, '${escapeHtml(item)}')"
+            aria-label="Quitar turno ${escapeHtml(item)}"
+            title="Quitar turno ${escapeHtml(item)}"
+          >✕</button>` : ''}
+        </span>
+      `).join('')}</div>
     </div>
   `;
 }
 
 function patternRenderSeq() {
   const sequenceEl = document.getElementById('pattern-sequence');
-  const closedDaysMarkup = patternDays.map((day, index) => patternRenderDayGroup(day, index)).join('');
-  const currentDayMarkup = patternRenderDayGroup({ shifts: patternCurrentDay }, patternDays.length, { current: true });
-  sequenceEl.innerHTML = `${closedDaysMarkup}${currentDayMarkup}`;
+  const closedDaysMarkup = patternDays.map((day, index) => patternRenderDayGroup(day, index, { editable: true })).join('');
+  const currentDayMarkup = patternRenderDayGroup({ shifts: patternCurrentDay }, patternDays.length, { current: true, editable: true });
+  const closeDayButtonMarkup = `
+    <button
+      type="button"
+      class="pattern-day-advance"
+      onclick="patternCloseCurrentDay()"
+      ${patternCurrentDay.length ? '' : 'disabled'}
+      aria-label="Cerrar día actual y empezar el siguiente"
+      title="Cerrar día actual y empezar el siguiente"
+    ><span class="pattern-day-advance-icon" aria-hidden="true">→</span></button>
+  `;
+  sequenceEl.innerHTML = `${closedDaysMarkup}${currentDayMarkup}${closeDayButtonMarkup}`;
   patternSyncDateRange();
 }
 
@@ -541,7 +588,8 @@ function renderPatternsList() {
   const el = document.getElementById('patterns-list');
   const title = document.getElementById('patterns-saved-title');
   const ownerCal = typeof getOwnerCalendar === 'function' ? getOwnerCalendar() : currentCal;
-  const patterns = (ownerCal && ownerCal.patterns) || [];
+  const today = isoDate(new Date());
+  const patterns = ((ownerCal && ownerCal.patterns) || []).filter(pattern => !pattern.endDate || pattern.endDate >= today);
   if (!patterns.length) {
     el.innerHTML = '';
     title.classList.add('hidden');
@@ -563,14 +611,14 @@ async function patternDelete(patternId) {
   const ownerCal = typeof getOwnerCalendar === 'function' ? getOwnerCalendar() : currentCal;
   if (!ownerCal || ownerCal.readonly) return;
   if (patternDeletingId) return;
-  if (!confirm('¿Eliminar este patrón repetitivo?')) return;
+  if (!confirm('¿Detener este patrón desde hoy? Se conservará el historial anterior.')) return;
   patternDeletingId = patternId;
   renderPatternsList();
   try {
     await googleCalendarDeletePattern(patternId);
-    toast('Patrón eliminado');
+    toast('Patrón detenido desde hoy');
   } catch (error) {
-    toast(`No se pudo eliminar el patrón: ${error.message}`);
+    toast(`No se pudo detener el patrón: ${error.message}`);
   } finally {
     patternDeletingId = null;
     renderPatternsList();
