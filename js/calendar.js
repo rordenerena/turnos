@@ -233,7 +233,7 @@ function calRender() {
 }
 
 function renderCalendarDay(ds, dayNumber, todayStr, isCurrentMonth) {
-  const shifts = getDayShifts(ds);
+  const shifts = getMonthlyCalendarVisibleShifts(ds);
   const evts = getDayEvents(ds);
   const isPastDay = ds < todayStr;
   let html = `<div class="cal-day${ds === todayStr ? ' today' : ''}${isCurrentMonth ? '' : ' adjacent-month'}${isPastDay ? ' past' : ''}" onclick="dayClick('${ds}')">`;
@@ -252,6 +252,10 @@ function renderCalendarDay(ds, dayNumber, todayStr, isCurrentMonth) {
   }
   html += '</div>';
   return html;
+}
+
+function getMonthlyCalendarVisibleShifts(ds) {
+  return getDayShifts(ds).filter(shift => shift.type !== 'L');
 }
 
 function sortShifts(a, b) {
