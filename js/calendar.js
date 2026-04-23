@@ -255,7 +255,7 @@ function renderCalendarDay(ds, dayNumber, todayStr, isCurrentMonth) {
 }
 
 function getMonthlyCalendarVisibleShifts(ds) {
-  return getDayShifts(ds).filter(shift => shift.type !== 'L');
+  return getDayShifts(ds).filter(shift => shift.type !== 'L' || !!String(shift.note || '').trim());
 }
 
 function sortShifts(a, b) {
