@@ -639,8 +639,6 @@ function patternRenderSeq() {
         title="Volver a modo día nuevo"
       >
         <span class="pattern-new-day-icon" aria-hidden="true">+</span>
-        <span class="pattern-day-header">Día nuevo</span>
-        <span class="pattern-new-day-copy">Siguiente turno en día nuevo</span>
       </button>
     `;
   if (hintEl) {
