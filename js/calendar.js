@@ -241,8 +241,8 @@ function renderCalendarDay(ds, dayNumber, todayStr, isCurrentMonth) {
   if (shifts.length) {
     html += '<div class="day-shifts">';
     shifts.forEach(s => {
-      const notePreview = truncateText(s.note, 12);
-      const note = notePreview ? `<small class="day-shift-note" title="${escapeHtml(s.note)}">${escapeHtml(notePreview)}</small>` : '';
+      const noteText = String(s.note || '').trim();
+      const note = noteText ? `<small class="day-shift-note" title="${escapeHtml(noteText)}">${escapeHtml(noteText)}</small>` : '';
       html += `<div class="day-shift s-${escapeHtml(s.type)}"><div class="day-shift-content"><span class="day-shift-type">${escapeHtml(s.type)}</span>${note}</div></div>`;
     });
     html += '</div>';
