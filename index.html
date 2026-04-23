@@ -127,7 +127,7 @@
           </button>
         </div>
         <div class="primary-drawer-footer">
-          <span id="app-version-hint" class="drawer-version">v23/04/2026 19:20</span>
+          <span id="app-version-hint" class="drawer-version">v23/04/2026 19:55</span>
           <button class="btn btn-sm drawer-update-button" type="button" onclick="updateSW()" aria-label="Comprobar actualizaciones de la app">
             <span class="icon-inline" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -163,13 +163,13 @@
     <!-- Patterns Tab -->
     <section id="tab-patterns" class="tab-content">
       <h2 class="section-title">Patrón repetitivo</h2>
-      <p class="hint">Crea un ciclo de días. Cada día puede llevar varios turnos y luego el ciclo se repite.</p>
+      <p class="hint">Crea un ciclo de días. Por defecto, cada turno añade un día nuevo; si necesitas varios turnos en un mismo día, selecciónalo primero.</p>
       <p id="pattern-owner-context" class="hint"></p>
       <div id="pattern-form" class="card">
         <label>Días del ciclo:</label>
         <div id="pattern-builder">
           <div id="pattern-sequence"></div>
-          <p class="hint" id="pattern-builder-hint">Añade turnos al día actual. Usa la flecha del bloque para cerrar ese día y empezar el siguiente.</p>
+          <p class="hint" id="pattern-builder-hint">Modo rápido: cada toque en M/T/N/L/V crea un día nuevo. Toca un día para añadir más turnos a ese mismo día.</p>
           <div id="pattern-buttons">
             <button class="btn shift-M" onclick="patternAdd('M')">M</button>
             <button class="btn shift-T" onclick="patternAdd('T')">T</button>

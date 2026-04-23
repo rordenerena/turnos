@@ -277,6 +277,8 @@ function appSupportBuildBody() {
   return [
     'Hola, necesito soporte con Turnos.',
     '',
+    'Describe aquí qué ha pasado y cómo puedo reproducirlo:',
+    '',
     'Información técnica:',
     `- Versión de PWA: ${appVisibleVersionHint()}`,
     `- Versión de móvil / dispositivo: ${appSupportParseDevice()}`,
@@ -287,12 +289,18 @@ function appSupportBuildBody() {
   ].join('\n');
 }
 
+function appEncodeMailtoParams(params) {
+  return Object.entries(params)
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+    .join('&');
+}
+
 function openSupportAction() {
   closePrimaryDrawer();
-  const mailto = `mailto:rordenerena@gmail.com?${new URLSearchParams({
+  const mailto = `mailto:rordenerena@gmail.com?${appEncodeMailtoParams({
     subject: 'Soporte de turnos',
     body: appSupportBuildBody(),
-  }).toString()}`;
+  })}`;
   window.setTimeout(() => {
     window.location.href = mailto;
   }, 0);

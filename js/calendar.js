@@ -4,7 +4,7 @@ let currentCal = null;
 let calYear, calMonth;
 let selectedDate = null;
 let patternDays = [];
-let patternCurrentDay = [];
+let patternSelectedDayIndex = null;
 let patternDeletingId = null;
 let patternDeleteDialogState = null;
 let readonlyBannerRefreshState = { calendarId: null, status: 'idle', resetTimer: null };
@@ -478,98 +478,126 @@ function patternBuildDay(shifts) {
 }
 
 function patternGetEffectiveDays() {
-  const days = patternDays.map(day => patternBuildDay(day.shifts));
-  if (patternCurrentDay.length) days.push(patternBuildDay(patternCurrentDay));
-  return days.filter(day => day.shifts.length > 0);
+  return patternDays
+    .map(day => patternBuildDay(day.shifts))
+    .filter(day => day.shifts.length > 0);
 }
 
-function patternCurrentDayHasShift(shiftType) {
-  return patternCurrentDay.includes(shiftType);
+function patternGetSelectedDay() {
+  if (patternSelectedDayIndex === null) return null;
+  return patternDays[patternSelectedDayIndex] || null;
 }
 
-function patternValidateShiftAddition(shiftType) {
-  if (patternCurrentDayHasShift(shiftType)) return 'Ese turno ya está en el día actual';
+function patternToggleDaySelection(dayIndex) {
+  patternSelectedDayIndex = patternSelectedDayIndex === dayIndex ? null : dayIndex;
+  patternRenderSeq();
+}
 
-  const currentHasExclusive = patternCurrentDay.some(type => type === 'L' || type === 'V');
+function patternNormalizeSelectedDayIndex() {
+  if (patternSelectedDayIndex === null) return;
+  if (patternSelectedDayIndex < 0 || patternSelectedDayIndex >= patternDays.length) {
+    patternSelectedDayIndex = null;
+  }
+}
+
+function patternValidateShiftAddition(shifts, shiftType) {
+  if ((shifts || []).includes(shiftType)) return 'Ese turno ya está en el día seleccionado';
+
+  const currentHasExclusive = (shifts || []).some(type => type === 'L' || type === 'V');
   const nextIsExclusive = shiftType === 'L' || shiftType === 'V';
 
   if (currentHasExclusive) return 'L y V deben ir solos en su día';
-  if (nextIsExclusive && patternCurrentDay.length) return 'No podés mezclar L o V con otros turnos';
+  if (nextIsExclusive && (shifts || []).length) return 'No podés mezclar L o V con otros turnos';
 
   return '';
 }
 
 function patternAdd(shiftType) {
-  const validationError = patternValidateShiftAddition(shiftType);
+  const selectedDay = patternGetSelectedDay();
+  if (!selectedDay) {
+    patternDays.push(patternBuildDay([shiftType]));
+    patternRenderSeq();
+    return;
+  }
+
+  if (selectedDay.shifts.includes(shiftType)) {
+    patternRemoveShift(patternSelectedDayIndex, shiftType);
+    return;
+  }
+
+  const validationError = patternValidateShiftAddition(selectedDay.shifts, shiftType);
   if (validationError) {
     toast(validationError);
     return;
   }
-  patternCurrentDay = patternNormalizeShiftTypes([...patternCurrentDay, shiftType]);
-  patternRenderSeq();
-}
-
-function patternCloseCurrentDay() {
-  if (!patternCurrentDay.length) {
-    toast('El día actual no tiene turnos');
-    return;
-  }
-  patternDays.push(patternBuildDay(patternCurrentDay));
-  patternCurrentDay = [];
+  patternDays[patternSelectedDayIndex] = patternBuildDay([...selectedDay.shifts, shiftType]);
   patternRenderSeq();
 }
 
 function patternRemoveShift(dayIndex, shiftType) {
   if (!shiftType) return;
-  if (dayIndex < patternDays.length) {
-    const day = patternDays[dayIndex];
-    if (!day) return;
-    const nextShifts = day.shifts.filter(type => type !== shiftType);
-    if (!nextShifts.length) {
-      patternDays.splice(dayIndex, 1);
-    } else {
-      patternDays[dayIndex] = patternBuildDay(nextShifts);
+  const day = patternDays[dayIndex];
+  if (!day) return;
+  const nextShifts = day.shifts.filter(type => type !== shiftType);
+  if (!nextShifts.length) {
+    patternDays.splice(dayIndex, 1);
+    if (patternSelectedDayIndex !== null) {
+      if (patternSelectedDayIndex === dayIndex) patternSelectedDayIndex = null;
+      else if (patternSelectedDayIndex > dayIndex) patternSelectedDayIndex--;
     }
   } else {
-    patternCurrentDay = patternCurrentDay.filter(type => type !== shiftType);
+    patternDays[dayIndex] = patternBuildDay(nextShifts);
   }
+  patternNormalizeSelectedDayIndex();
   patternRenderSeq();
 }
 
 function patternRemoveDay(dayIndex) {
   if (dayIndex < patternDays.length) {
     patternDays.splice(dayIndex, 1);
-  } else {
-    patternCurrentDay = [];
+    if (patternSelectedDayIndex !== null) {
+      if (patternSelectedDayIndex === dayIndex) patternSelectedDayIndex = null;
+      else if (patternSelectedDayIndex > dayIndex) patternSelectedDayIndex--;
+    }
   }
+  patternNormalizeSelectedDayIndex();
   patternRenderSeq();
 }
 
 function patternClear() {
   patternDays = [];
-  patternCurrentDay = [];
+  patternSelectedDayIndex = null;
   patternRenderSeq();
 }
 
 function patternRenderDayGroup(day, index, options = {}) {
   const shifts = patternNormalizeShiftTypes(day?.shifts);
   const classes = ['pattern-day'];
-  if (options.current) classes.push('pattern-day-current');
   if (!shifts.length) classes.push('pattern-day-empty');
-  const title = options.current ? 'Día actual' : `Día ${index + 1}`;
-  const removeTitle = options.current ? 'Vaciar día actual' : `Eliminar ${title.toLowerCase()}`;
+  const selected = !!options.selected;
+  if (options.editable) classes.push('pattern-day-selectable');
+  if (selected) classes.push('pattern-day-selected');
+  const title = `Día ${index + 1}`;
+  const removeTitle = `Eliminar ${title.toLowerCase()}`;
   const editable = !!options.editable;
+  const selectAttributes = editable ? `
+      role="button"
+      tabindex="0"
+      aria-pressed="${selected ? 'true' : 'false'}"
+      onclick="patternToggleDaySelection(${index})"
+      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); patternToggleDaySelection(${index}); }"
+    ` : '';
   const dayRemoveButton = editable ? `
     <button
       type="button"
       class="pattern-inline-remove pattern-day-remove"
-      onclick="patternRemoveDay(${index})"
+      onclick="event.stopPropagation(); patternRemoveDay(${index})"
       aria-label="${escapeHtml(removeTitle)}"
       title="${escapeHtml(removeTitle)}"
     >✕</button>
   ` : '';
   return `
-    <div class="${classes.join(' ')}">
+    <div class="${classes.join(' ')}"${selectAttributes}>
       ${editable ? `<div class="pattern-day-actions">${dayRemoveButton}</div>` : ''}
       <span class="pattern-day-header">${escapeHtml(title)}</span>
       <div class="pattern-day-shifts">${shifts.map(item => `
@@ -578,7 +606,7 @@ function patternRenderDayGroup(day, index, options = {}) {
           ${editable ? `<button
             type="button"
             class="pattern-inline-remove"
-            onclick="patternRemoveShift(${index}, '${escapeHtml(item)}')"
+            onclick="event.stopPropagation(); patternRemoveShift(${index}, '${escapeHtml(item)}')"
             aria-label="Quitar turno ${escapeHtml(item)}"
             title="Quitar turno ${escapeHtml(item)}"
           >✕</button>` : ''}
@@ -590,19 +618,18 @@ function patternRenderDayGroup(day, index, options = {}) {
 
 function patternRenderSeq() {
   const sequenceEl = document.getElementById('pattern-sequence');
-  const closedDaysMarkup = patternDays.map((day, index) => patternRenderDayGroup(day, index, { editable: true })).join('');
-  const currentDayMarkup = patternRenderDayGroup({ shifts: patternCurrentDay }, patternDays.length, { current: true, editable: true });
-  const closeDayButtonMarkup = `
-    <button
-      type="button"
-      class="pattern-day-advance"
-      onclick="patternCloseCurrentDay()"
-      ${patternCurrentDay.length ? '' : 'disabled'}
-      aria-label="Cerrar día actual y empezar el siguiente"
-      title="Cerrar día actual y empezar el siguiente"
-    ><span class="pattern-day-advance-icon" aria-hidden="true">→</span></button>
-  `;
-  sequenceEl.innerHTML = `${closedDaysMarkup}${currentDayMarkup}${closeDayButtonMarkup}`;
+  const hintEl = document.getElementById('pattern-builder-hint');
+  sequenceEl.innerHTML = patternDays
+    .map((day, index) => patternRenderDayGroup(day, index, {
+      editable: true,
+      selected: patternSelectedDayIndex === index,
+    }))
+    .join('');
+  if (hintEl) {
+    hintEl.textContent = patternSelectedDayIndex === null
+      ? 'Modo rápido: cada toque en M/T/N/L/V crea un día nuevo. Toca un día para añadir más turnos a ese mismo día.'
+      : `Añadiendo turnos al día ${patternSelectedDayIndex + 1}. Tócalo otra vez para dejar de seleccionarlo.`;
+  }
   patternSyncDateRange();
 }
 
