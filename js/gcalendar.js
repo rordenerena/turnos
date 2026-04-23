@@ -447,12 +447,12 @@ async function googleCalendarReplaceDayContent(ds, nextShifts, nextEvents) {
   const manualShifts = dayShifts.filter(item => item.source?.kind === 'manual');
   const patternShifts = dayShifts.filter(item => item.source?.kind === 'pattern-instance');
   const manualEvents = dayEvents.filter(item => item.source?.kind === 'event');
-  const nextHasVacation = nextShifts.some(item => item.type === 'V');
-  const visibleHasVacationOverride = visibleShifts.some(item => item?.type === 'V');
-  const shouldCancelPatternShifts = !nextHasVacation && (!visibleHasVacationOverride || nextShifts.length > 0);
+  const nextExclusiveShift = nextShifts.find(item => isExclusiveShiftType(item.type));
+  const visibleExclusiveOverride = visibleShifts.find(item => isExclusiveShiftType(item?.type) && !item.source?.isPatternInstance);
+  const shouldCancelPatternShifts = !nextExclusiveShift && (!visibleExclusiveOverride || nextShifts.length > 0);
   const patternShiftTypes = new Set(patternShifts.map(item => item.type));
-  const shiftsToCreate = nextHasVacation
-    ? nextShifts.filter(item => item.type === 'V' || !patternShiftTypes.has(item.type))
+  const shiftsToCreate = nextExclusiveShift
+    ? nextShifts.filter(item => item.type === nextExclusiveShift.type || !patternShiftTypes.has(item.type))
     : nextShifts;
 
   for (const item of manualShifts) {

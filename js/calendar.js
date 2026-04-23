@@ -241,7 +241,8 @@ function renderCalendarDay(ds, dayNumber, todayStr, isCurrentMonth) {
   if (shifts.length) {
     html += '<div class="day-shifts">';
     shifts.forEach(s => {
-      const note = s.note ? ` <small>${escapeHtml(s.note)}</small>` : '';
+      const notePreview = truncateText(s.note, 12);
+      const note = notePreview ? ` <small title="${escapeHtml(s.note)}">${escapeHtml(notePreview)}</small>` : '';
       html += `<div class="day-shift s-${escapeHtml(s.type)}">${escapeHtml(s.type)}${note}</div>`;
     });
     html += '</div>';
@@ -258,11 +259,17 @@ function sortShifts(a, b) {
   return (order[a.type] ?? 10) - (order[b.type] ?? 10);
 }
 
+function isExclusiveShiftType(type) {
+  return type === 'L' || type === 'V';
+}
+
 function resolveDayShiftPriority(items) {
   const shifts = (items || []).slice();
-  const hasVacation = shifts.some(item => item?.type === 'V');
-  if (!hasVacation) return shifts.sort(sortShifts);
-  return shifts.filter(item => !(item.source?.isPatternInstance && item.type !== 'V')).sort(sortShifts);
+  const exclusiveOverride = shifts.find(item => isExclusiveShiftType(item?.type) && !item.source?.isPatternInstance);
+  if (!exclusiveOverride) return shifts.sort(sortShifts);
+  return shifts
+    .filter(item => !item.source?.isPatternInstance || item.type === exclusiveOverride.type)
+    .sort(sortShifts);
 }
 
 function buildShiftVisibilityMap(shiftsByDay) {
@@ -335,19 +342,28 @@ function getDayEvents(ds) {
 function setShift(shift) {
   if (!currentCal || currentCal.readonly) return;
   const current = getDayShifts(selectedDate);
-  const byType = {};
-  current.forEach(item => { byType[item.type] = item; });
-  const nextTypes = current.map(item => item.type);
+  const currentTypes = current.map(item => item.type);
+  const rememberedNote = type => (typeof modalGetRememberedShiftNote === 'function' ? modalGetRememberedShiftNote(type) : '');
+  let nextTypes = [];
 
   if (shift === null) {
     modalSetDraftShifts([]);
   } else {
-    const idx = nextTypes.indexOf(shift);
-    if (idx >= 0) nextTypes.splice(idx, 1);
-    else nextTypes.push(shift);
+    const alreadySelected = currentTypes.includes(shift);
+    const shiftIsExclusive = isExclusiveShiftType(shift);
+
+    if (alreadySelected) {
+      nextTypes = currentTypes.filter(type => type !== shift);
+    } else if (shiftIsExclusive) {
+      nextTypes = [shift];
+    } else {
+      nextTypes = currentTypes.filter(type => !isExclusiveShiftType(type));
+      nextTypes.push(shift);
+    }
+
     modalSetDraftShifts(nextTypes.sort((a, b) => sortShifts({ type: a }, { type: b })).map(type => ({
       type,
-      note: byType[type]?.note || '',
+      note: rememberedNote(type),
     })));
   }
 

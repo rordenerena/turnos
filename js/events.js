@@ -1,6 +1,7 @@
 /* events.js — modal y CRUD sobre Google Calendar */
 
 let modalDayDraft = null;
+const MODAL_SHIFT_NOTE_MAX_LENGTH = 120;
 
 function cloneDayShifts(items) {
   return (items || []).map(item => ({
@@ -34,9 +35,33 @@ function modalGetDraft(ds) {
   return modalDayDraft.current;
 }
 
+function modalBuildShiftNotesIndex(...groups) {
+  const notesByType = {};
+  groups.flat().forEach(item => {
+    if (!item?.type) return;
+    notesByType[item.type] = item.note || '';
+  });
+  return notesByType;
+}
+
+function modalRememberShiftNotes(items) {
+  if (!modalDayDraft) return;
+  modalDayDraft.shiftNotesByType = {
+    ...(modalDayDraft.shiftNotesByType || {}),
+    ...modalBuildShiftNotesIndex(items || []),
+  };
+}
+
+function modalGetRememberedShiftNote(type) {
+  if (!modalDayDraft || !type) return '';
+  return modalDayDraft.shiftNotesByType?.[type] || '';
+}
+
 function modalSetDraftShifts(nextShifts) {
   if (!modalDayDraft) return;
-  modalDayDraft.current.shifts = cloneDayShifts(nextShifts).sort(sortShifts);
+  const cloned = cloneDayShifts(nextShifts).sort(sortShifts);
+  modalRememberShiftNotes(cloned);
+  modalDayDraft.current.shifts = cloned;
 }
 
 function modalSetDraftEvents(nextEvents) {
@@ -87,6 +112,10 @@ function modalOpen(ds) {
       shifts: cloneDayShifts((currentCal && currentCal.shifts && currentCal.shifts[ds]) || []),
       events: cloneDayEvents((currentCal && currentCal.events && currentCal.events[ds]) || []),
     },
+    shiftNotesByType: modalBuildShiftNotesIndex(
+      (currentCal && currentCal.rawShifts && currentCal.rawShifts[ds]) || [],
+      (currentCal && currentCal.shifts && currentCal.shifts[ds]) || []
+    ),
     saving: false,
   };
   document.getElementById('modal-overlay').classList.remove('hidden');
@@ -138,7 +167,7 @@ function modalRenderShift() {
   notesEl.innerHTML = current.map(item => `
     <div class="shift-note-row">
       <span class="seq-item shift-${item.type}">${escapeHtml(item.type)}</span>
-      <input type="text" value="${escapeHtml(item.note || '')}" placeholder="Nota..." maxlength="20" ${readonly ? 'disabled' : ''} onchange="setShiftNote('${item.type}', this.value)">
+      <input type="text" value="${escapeHtml(item.note || '')}" placeholder="Nota..." maxlength="${MODAL_SHIFT_NOTE_MAX_LENGTH}" ${readonly ? 'disabled' : ''} onchange="setShiftNote('${item.type}', this.value)">
     </div>
   `).join('');
 }
