@@ -112,8 +112,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .cal-day.today{background:var(--today-bg)}
 .cal-day.adjacent-month.today{opacity:.48}
 .cal-day .day-num{font-weight:600;font-size:.7rem}
-.cal-day .day-shifts{display:flex;flex-wrap:wrap;gap:1px;align-items:center;margin-top:6px}
-.cal-day .day-shift{display:inline-flex;justify-content:center;align-items:center;margin-right:1px;padding:1px 3px;border-radius:3px;color:#fff;font-weight:700;font-size:.65rem;min-width:14px}
+.cal-day .day-shifts{display:flex;flex-direction:column;gap:3px;align-items:stretch;margin-top:6px}
+.cal-day .day-shift{display:flex;flex-direction:column;justify-content:center;align-items:center;width:100%;padding:3px 4px;border-radius:4px;color:#fff;font-weight:700;font-size:.65rem;text-align:center;line-height:1.1}
+.cal-day .day-shift-type{display:block;width:100%}
 .cal-day.past .day-shift{opacity:.1}
 .cal-day .day-shift.s-M{background:var(--shift-m)}
 .cal-day .day-shift.s-T{background:var(--shift-t)}
@@ -128,7 +129,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
   border:1px solid rgba(73,50,134,.45);
   text-shadow:0 1px 0 rgba(255,255,255,.25);
 }
-.cal-day .day-shift small{font-weight:400;font-size:.55rem;opacity:.9}
+.cal-day .day-shift-note{display:block;width:100%;font-weight:400;font-size:.55rem;opacity:.9;margin-top:2px;line-height:1.15}
 .cal-day .day-events{font-size:.6rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cal-day .event-dot{display:inline-block;width:5px;height:5px;background:var(--accent);border-radius:50%;margin-right:2px;vertical-align:middle}
 
