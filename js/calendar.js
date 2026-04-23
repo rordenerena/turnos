@@ -493,6 +493,12 @@ function patternToggleDaySelection(dayIndex) {
   patternRenderSeq();
 }
 
+function patternSelectNewDayMode() {
+  if (patternSelectedDayIndex === null) return;
+  patternSelectedDayIndex = null;
+  patternRenderSeq();
+}
+
 function patternNormalizeSelectedDayIndex() {
   if (patternSelectedDayIndex === null) return;
   if (patternSelectedDayIndex < 0 || patternSelectedDayIndex >= patternDays.length) {
@@ -624,11 +630,23 @@ function patternRenderSeq() {
       editable: true,
       selected: patternSelectedDayIndex === index,
     }))
-    .join('');
+    .join('') + `
+      <button
+        type="button"
+        class="pattern-day pattern-new-day${patternSelectedDayIndex === null ? ' pattern-new-day-active' : ''}"
+        onclick="patternSelectNewDayMode()"
+        aria-pressed="${patternSelectedDayIndex === null ? 'true' : 'false'}"
+        title="Volver a modo día nuevo"
+      >
+        <span class="pattern-new-day-icon" aria-hidden="true">+</span>
+        <span class="pattern-day-header">Día nuevo</span>
+        <span class="pattern-new-day-copy">Siguiente turno en día nuevo</span>
+      </button>
+    `;
   if (hintEl) {
     hintEl.textContent = patternSelectedDayIndex === null
-      ? 'Modo rápido: cada toque en M/T/N/L/V crea un día nuevo. Toca un día para añadir más turnos a ese mismo día.'
-      : `Añadiendo turnos al día ${patternSelectedDayIndex + 1}. Tócalo otra vez para dejar de seleccionarlo.`;
+      ? 'Modo rápido: cada toque en M/T/N/L/V crea un día nuevo. También podés usar “Día nuevo” para mantener ese modo.'
+      : `Añadiendo turnos al día ${patternSelectedDayIndex + 1}. Usa “Día nuevo” para volver a crear días nuevos.`;
   }
   patternSyncDateRange();
 }

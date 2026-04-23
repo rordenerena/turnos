@@ -164,7 +164,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .card{background:var(--card);padding:12px;border-radius:var(--radius);border:1px solid var(--border);margin-bottom:10px}
 .card h3{font-size:.9rem;margin-bottom:8px}
 .card label{display:block;margin:10px 0 4px;font-weight:600;font-size:.85rem}
-.card input[type="date"],.card input[type="month"],.card input[type="text"],.card input[type="password"]{width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:.85rem;background:var(--card);color:var(--text);margin-bottom:6px}
+.card input[type="date"],.card input[type="month"],.card input[type="text"],.card input[type="password"]{display:block;width:100%;max-width:100%;min-width:0;-webkit-min-logical-width:0;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:.85rem;background:var(--card);color:var(--text);margin-bottom:6px}
 .row{display:flex;gap:6px;align-items:center}
 .row input{flex:1}
 
@@ -172,7 +172,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 #pattern-sequence{display:flex;flex-wrap:wrap;gap:8px;min-height:44px;padding:8px;background:var(--bg);border-radius:var(--radius);margin-bottom:6px;align-items:flex-start}
 #pattern-sequence .seq-item{padding:2px 8px;border-radius:4px;color:#fff;font-weight:700;font-size:.8rem;min-width:28px;text-align:center}
 #pattern-builder-hint{margin-top:0}
-#pattern-sequence .pattern-day{position:relative;display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid var(--border);border-radius:10px;background:var(--card);min-width:72px;padding-top:20px}
+#pattern-sequence .pattern-day{position:relative;display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid var(--border);border-radius:10px;background:var(--card);min-width:72px;min-height:86px;padding-top:20px}
 #pattern-sequence .pattern-day-selectable{cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease}
 #pattern-sequence .pattern-day-selectable:hover{border-color:var(--primary);box-shadow:0 2px 8px rgba(0,0,0,.08)}
 #pattern-sequence .pattern-day-selectable:focus-visible{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px rgba(10,10,10,.12)}
@@ -187,6 +187,12 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 #pattern-sequence .pattern-inline-remove{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border:none;border-radius:999px;background:var(--card);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.18);display:inline-flex;align-items:center;justify-content:center;font-size:.68rem;line-height:1;cursor:pointer;padding:0}
 #pattern-sequence .pattern-day-remove{position:static;width:20px;height:20px;border:1px solid var(--border);box-shadow:none;background:var(--bg)}
 #pattern-sequence .pattern-day-remove:hover,#pattern-sequence .pattern-inline-remove:hover{opacity:.85}
+#pattern-sequence .pattern-new-day{align-items:flex-start;justify-content:center;min-width:112px;padding-top:8px;cursor:pointer;color:var(--text);background:var(--bg);border-style:dashed;transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease}
+#pattern-sequence .pattern-new-day:hover{border-color:var(--primary);box-shadow:0 2px 8px rgba(0,0,0,.08)}
+#pattern-sequence .pattern-new-day:focus-visible{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px rgba(10,10,10,.12)}
+#pattern-sequence .pattern-new-day-active{border-color:var(--primary);box-shadow:0 0 0 2px rgba(10,10,10,.12);background:var(--card)}
+#pattern-sequence .pattern-new-day-icon{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:999px;background:var(--card);border:1px solid var(--border);font-size:1.15rem;font-weight:700;line-height:1}
+#pattern-sequence .pattern-new-day-copy{font-size:.75rem;line-height:1.2;color:var(--muted)}
 #pattern-buttons{display:flex;gap:6px;flex-wrap:wrap}
 #pattern-mode-select{display:flex;gap:16px;margin:8px 0}
 #pattern-mode-select label{display:inline;font-weight:normal;font-size:.85rem}
