@@ -456,13 +456,14 @@ async function googleCalendarReplaceDayContent(ds, nextShifts, nextEvents) {
   const manualShifts = dayShifts.filter(item => item.source?.kind === 'manual');
   const patternShifts = dayShifts.filter(item => item.source?.kind === 'pattern-instance');
   const manualEvents = dayEvents.filter(item => item.source?.kind === 'event');
-  const nextExclusiveShift = nextShifts.find(item => isExclusiveShiftType(item.type));
+  const normalizedNextShifts = resolveDayShiftPriority(nextShifts || []);
+  const nextExclusiveShift = normalizedNextShifts.find(item => isExclusiveShiftType(item.type));
   const visibleExclusiveOverride = visibleShifts.find(item => isExclusiveShiftType(item?.type) && !item.source?.isPatternInstance);
-  const shouldCancelPatternShifts = !nextExclusiveShift && (!visibleExclusiveOverride || nextShifts.length > 0);
+  const shouldCancelPatternShifts = !nextExclusiveShift && (!visibleExclusiveOverride || normalizedNextShifts.length > 0);
   const patternShiftTypes = new Set(patternShifts.map(item => item.type));
-  const shiftsToCreate = nextExclusiveShift
-    ? nextShifts.filter(item => item.type === nextExclusiveShift.type || !patternShiftTypes.has(item.type))
-    : nextShifts;
+  const shiftsToCreate = normalizeDayShiftsByType(nextExclusiveShift
+    ? normalizedNextShifts.filter(item => item.type === nextExclusiveShift.type || !patternShiftTypes.has(item.type))
+    : normalizedNextShifts).sort(sortShifts);
 
   for (const item of manualShifts) {
     await googleCalendarDeleteEvent(item.source.eventId);
@@ -511,14 +512,16 @@ async function googleCalendarCreatePattern(days, startDate, endDate) {
   await googleCalendarRefreshOwner({ silent: true });
 }
 
-async function googleCalendarDeletePattern(patternId) {
+async function googleCalendarDeletePattern(patternId, mode = 'fromToday') {
   const pattern = (googleOwnerCalendar?.patterns || []).find(item => item.patternId === patternId);
   if (!pattern) return;
   const today = isoDate(new Date());
   const yesterday = addDays(today, -1);
   for (const source of pattern.sources) {
     try {
-      if (!source.startDate || source.startDate >= today) {
+      if (mode === 'full') {
+        await googleCalendarDeleteEvent(source.eventId);
+      } else if (!source.startDate || source.startDate >= today) {
         await googleCalendarDeleteEvent(source.eventId);
       } else {
         await googleCalendarPatchEvent(source.eventId, {

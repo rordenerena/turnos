@@ -106,6 +106,16 @@
             </span>
             <span>Compartir</span>
           </button>
+          <button class="drawer-action" type="button" onclick="openSupportAction()">
+            <span class="drawer-action-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8a6 6 0 0 0-12 0v3a4 4 0 0 0 4 4h1l2.2 2.2a1 1 0 0 0 1.7-.7V15H18a4 4 0 0 0 4-4V8"></path>
+                <path d="M12 11h.01"></path>
+                <path d="M9.5 8.5a2.5 2.5 0 0 1 5 0c0 1.5-2.5 1.75-2.5 3"></path>
+              </svg>
+            </span>
+            <span>Soporte</span>
+          </button>
           <button class="drawer-action" type="button" data-view="settings" onclick="openPrimaryMenuAction('settings')">
             <span class="drawer-action-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -117,7 +127,7 @@
           </button>
         </div>
         <div class="primary-drawer-footer">
-          <span class="drawer-version">v23/04/2026 18:01</span>
+          <span id="app-version-hint" class="drawer-version">v23/04/2026 19:20</span>
           <button class="btn btn-sm drawer-update-button" type="button" onclick="updateSW()" aria-label="Comprobar actualizaciones de la app">
             <span class="icon-inline" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -256,6 +266,31 @@
             <button class="btn btn-primary" type="submit">Guardar</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <div id="pattern-delete-overlay" class="dialog-overlay hidden" onclick="patternDeleteDialogCancel(event)">
+      <div class="dialog-card pattern-delete-dialog">
+        <div class="dialog-header">
+          <h3>Eliminar patrón</h3>
+          <button class="btn btn-sm btn-ghost icon-button" type="button" onclick="patternDeleteDialogCancel()" aria-label="Cerrar diálogo">
+            <span class="icon-inline" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6L6 18"></path>
+                <path d="M6 6l12 12"></path>
+              </svg>
+            </span>
+          </button>
+        </div>
+        <p class="hint">Elegí cómo querés borrar este patrón.</p>
+        <p id="pattern-delete-hint" class="hint"></p>
+        <div class="pattern-delete-actions">
+          <button id="pattern-delete-full-btn" class="btn btn-danger" type="button" onclick="patternDeleteConfirm('full')">Borrado completo</button>
+          <button id="pattern-delete-from-today-btn" class="btn btn-primary" type="button" onclick="patternDeleteConfirm('fromToday')">Borrado desde hoy</button>
+        </div>
+        <div class="dialog-actions">
+          <button id="pattern-delete-cancel-btn" class="btn" type="button" onclick="patternDeleteDialogCancel()">Cancelar</button>
+        </div>
       </div>
     </div>
 

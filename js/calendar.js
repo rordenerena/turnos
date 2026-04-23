@@ -6,6 +6,7 @@ let selectedDate = null;
 let patternDays = [];
 let patternCurrentDay = [];
 let patternDeletingId = null;
+let patternDeleteDialogState = null;
 let readonlyBannerRefreshState = { calendarId: null, status: 'idle', resetTimer: null };
 const READONLY_BANNER_VISIBILITY_KEY = 'turnos_readonly_banner_visibility';
 const readonlyBannerHiddenByCalendar = loadReadonlyBannerHiddenByCalendar();
@@ -68,7 +69,59 @@ function readonlyBannerRefreshMarkup(status) {
 
 function patternDeleteButtonMarkup(patternId) {
   const deleting = patternDeletingId === patternId;
-  return `<button class="btn btn-sm btn-danger pattern-delete-button" onclick="patternDelete('${patternId}')" ${deleting ? 'disabled aria-busy="true"' : ''} title="Detener patrón desde hoy" aria-label="Detener patrón desde hoy">${deleting ? '<span class="readonly-banner-spinner" aria-hidden="true"></span>' : '✕'}</button>`;
+  return `<button class="btn btn-sm btn-danger pattern-delete-button" onclick="patternDelete('${patternId}')" ${deleting ? 'disabled aria-busy="true"' : ''} title="Eliminar patrón" aria-label="Eliminar patrón">${deleting ? '<span class="readonly-banner-spinner" aria-hidden="true"></span>' : '✕'}</button>`;
+}
+
+function patternDeleteDialogPattern() {
+  if (!patternDeleteDialogState?.patternId) return null;
+  const ownerCal = typeof getOwnerCalendar === 'function' ? getOwnerCalendar() : currentCal;
+  return (ownerCal?.patterns || []).find(pattern => pattern.patternId === patternDeleteDialogState.patternId) || null;
+}
+
+function patternDeleteDialogRender() {
+  const overlay = document.getElementById('pattern-delete-overlay');
+  const hint = document.getElementById('pattern-delete-hint');
+  const fullButton = document.getElementById('pattern-delete-full-btn');
+  const fromTodayButton = document.getElementById('pattern-delete-from-today-btn');
+  const cancelButton = document.getElementById('pattern-delete-cancel-btn');
+  if (!overlay || !hint || !fullButton || !fromTodayButton || !cancelButton) return;
+
+  if (!patternDeleteDialogState?.patternId) {
+    overlay.classList.add('hidden');
+    return;
+  }
+
+  const deleting = patternDeletingId === patternDeleteDialogState.patternId;
+  const pendingMode = patternDeleteDialogState.pendingMode || null;
+  const pattern = patternDeleteDialogPattern();
+  const rangeText = pattern ? `${pattern.startDate || 'sin inicio'} → ${pattern.endDate || '∞'}` : 'Este patrón';
+
+  hint.textContent = deleting
+    ? 'Eliminando patrón…'
+    : `${rangeText}. "Borrado completo" elimina todo el patrón. "Borrado desde hoy" conserva el historial anterior.`;
+
+  fullButton.disabled = deleting;
+  fromTodayButton.disabled = deleting;
+  cancelButton.disabled = deleting;
+  fullButton.innerHTML = deleting && pendingMode === 'full' ? '<span class="readonly-banner-spinner" aria-hidden="true"></span>' : 'Borrado completo';
+  fromTodayButton.innerHTML = deleting && pendingMode === 'fromToday' ? '<span class="readonly-banner-spinner" aria-hidden="true"></span>' : 'Borrado desde hoy';
+  overlay.classList.remove('hidden');
+}
+
+function patternDeleteDialogOpen(patternId) {
+  patternDeleteDialogState = { patternId, pendingMode: null };
+  patternDeleteDialogRender();
+}
+
+function patternDeleteDialogClose() {
+  patternDeleteDialogState = null;
+  patternDeleteDialogRender();
+}
+
+function patternDeleteDialogCancel(event) {
+  if (event && event.target && event.target.id !== 'pattern-delete-overlay') return;
+  if (patternDeletingId) return;
+  patternDeleteDialogClose();
 }
 
 async function readonlyBannerRefreshCurrent(event) {
@@ -267,13 +320,43 @@ function isExclusiveShiftType(type) {
   return type === 'L' || type === 'V';
 }
 
+function shiftHasNote(item) {
+  return !!String(item?.note || '').trim();
+}
+
+function shiftSourcePriority(item) {
+  if (!item?.source) return 1;
+  if (item.source.isPatternInstance) return 0;
+  return 2;
+}
+
+function compareShiftRelevance(a, b) {
+  const sourceDiff = shiftSourcePriority(b) - shiftSourcePriority(a);
+  if (sourceDiff) return sourceDiff;
+  const noteDiff = Number(shiftHasNote(b)) - Number(shiftHasNote(a));
+  if (noteDiff) return noteDiff;
+  return 0;
+}
+
+function normalizeDayShiftsByType(items) {
+  const bestByType = {};
+  (items || []).forEach(item => {
+    if (!item?.type) return;
+    const currentBest = bestByType[item.type];
+    if (!currentBest || compareShiftRelevance(item, currentBest) < 0) {
+      bestByType[item.type] = item;
+    }
+  });
+  return Object.values(bestByType);
+}
+
 function resolveDayShiftPriority(items) {
-  const shifts = (items || []).slice();
+  const shifts = normalizeDayShiftsByType(items);
   const exclusiveOverride = shifts.find(item => isExclusiveShiftType(item?.type) && !item.source?.isPatternInstance);
-  if (!exclusiveOverride) return shifts.sort(sortShifts);
-  return shifts
-    .filter(item => !item.source?.isPatternInstance || item.type === exclusiveOverride.type)
-    .sort(sortShifts);
+  if (exclusiveOverride) return [exclusiveOverride];
+  const exclusiveShift = shifts.filter(item => isExclusiveShiftType(item?.type)).sort(compareShiftRelevance)[0];
+  if (exclusiveShift) return [exclusiveShift];
+  return shifts.sort(sortShifts);
 }
 
 function buildShiftVisibilityMap(shiftsByDay) {
@@ -334,7 +417,7 @@ function calInitSwipe() {
 function getDayShifts(ds) {
   const draft = getModalDraftDay(ds);
   const shifts = draft ? draft.shifts : ((currentCal && currentCal.shifts && currentCal.shifts[ds]) || []);
-  return shifts.slice().sort(sortShifts);
+  return resolveDayShiftPriority(shifts);
 }
 
 function getDayEvents(ds) {
@@ -611,16 +694,28 @@ async function patternDelete(patternId) {
   const ownerCal = typeof getOwnerCalendar === 'function' ? getOwnerCalendar() : currentCal;
   if (!ownerCal || ownerCal.readonly) return;
   if (patternDeletingId) return;
-  if (!confirm('¿Detener este patrón desde hoy? Se conservará el historial anterior.')) return;
+  patternDeleteDialogOpen(patternId);
+}
+
+async function patternDeleteConfirm(mode) {
+  const ownerCal = typeof getOwnerCalendar === 'function' ? getOwnerCalendar() : currentCal;
+  const patternId = patternDeleteDialogState?.patternId;
+  if (!ownerCal || ownerCal.readonly || !patternId) return;
+  if (patternDeletingId) return;
+  patternDeleteDialogState.pendingMode = mode;
   patternDeletingId = patternId;
   renderPatternsList();
+  patternDeleteDialogRender();
   try {
-    await googleCalendarDeletePattern(patternId);
-    toast('Patrón detenido desde hoy');
+    await googleCalendarDeletePattern(patternId, mode);
+    patternDeleteDialogClose();
+    toast(mode === 'full' ? 'Patrón borrado por completo' : 'Patrón detenido desde hoy');
   } catch (error) {
-    toast(`No se pudo detener el patrón: ${error.message}`);
+    toast(`${mode === 'full' ? 'No se pudo borrar el patrón' : 'No se pudo detener el patrón'}: ${error.message}`);
   } finally {
     patternDeletingId = null;
+    if (patternDeleteDialogState) patternDeleteDialogState.pendingMode = null;
     renderPatternsList();
+    patternDeleteDialogRender();
   }
 }

@@ -217,6 +217,10 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .dialog-header h3{font-size:1rem}
 .dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
 #rename-import-input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:.95rem;background:var(--card);color:var(--text)}
+.pattern-delete-dialog{max-width:400px}
+.pattern-delete-actions{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.pattern-delete-actions .btn{width:100%;justify-content:center;display:inline-flex;align-items:center;min-height:42px}
+.pattern-delete-actions .btn[disabled],#pattern-delete-cancel-btn[disabled]{cursor:wait;opacity:.78}
 
 /* Modal */
 #modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}

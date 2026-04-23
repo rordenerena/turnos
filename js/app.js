@@ -212,6 +212,92 @@ function openPrimaryMenuAction(action) {
   switchTab(action);
 }
 
+function appVisibleVersionHint() {
+  return document.getElementById('app-version-hint')?.textContent?.trim() || 'No disponible';
+}
+
+function appSupportParseOs() {
+  const ua = navigator.userAgent || '';
+  const platform = navigator.userAgentData?.platform || navigator.platform || '';
+  const android = ua.match(/Android\s+([\d.]+)/i);
+  if (android) return `Android ${android[1]}`;
+  const ios = ua.match(/(?:CPU(?: iPhone)? OS|iPhone OS)\s+([\d_]+)/i);
+  if (ios) return `iOS ${ios[1].replace(/_/g, '.')}`;
+  const windows = ua.match(/Windows NT\s+([\d.]+)/i);
+  if (windows) return `Windows ${windows[1]}`;
+  const mac = ua.match(/Mac OS X\s+([\d_]+)/i);
+  if (mac) return `macOS ${mac[1].replace(/_/g, '.')}`;
+  const linux = /Linux/i.test(ua) || /Linux/i.test(platform);
+  if (linux) return 'Linux';
+  return platform || 'No disponible';
+}
+
+function appSupportParseDevice() {
+  const ua = navigator.userAgent || '';
+  const uaData = navigator.userAgentData;
+  if (uaData?.model) return uaData.model;
+  if (uaData?.mobile) return `Móvil (${uaData.platform || 'plataforma no disponible'})`;
+  if (/iPhone/i.test(ua)) return 'iPhone';
+  if (/iPad/i.test(ua)) return 'iPad';
+  if (/Android/i.test(ua)) return /Mobile/i.test(ua) ? 'Android móvil' : 'Android tablet';
+  if (/Windows/i.test(ua)) return 'PC Windows';
+  if (/Macintosh|Mac OS X/i.test(ua)) return 'Mac';
+  if (/Linux/i.test(ua)) return 'Equipo Linux';
+  return 'No disponible';
+}
+
+function appSupportParseBrowser() {
+  const uaDataBrands = navigator.userAgentData?.brands || [];
+  const preferredBrand = uaDataBrands.find(item => !/Not/i.test(item.brand)) || uaDataBrands[0] || null;
+  if (preferredBrand?.brand) {
+    return {
+      name: preferredBrand.brand,
+      version: preferredBrand.version || 'No disponible',
+    };
+  }
+
+  const ua = navigator.userAgent || '';
+  const candidates = [
+    { name: 'Edge', regex: /Edg\/([\d.]+)/i },
+    { name: 'Opera', regex: /OPR\/([\d.]+)/i },
+    { name: 'Samsung Internet', regex: /SamsungBrowser\/([\d.]+)/i },
+    { name: 'Chrome', regex: /Chrome\/([\d.]+)/i },
+    { name: 'Firefox', regex: /Firefox\/([\d.]+)/i },
+    { name: 'Safari', regex: /Version\/([\d.]+).*Safari/i },
+  ];
+  const match = candidates.map(item => ({ ...item, found: ua.match(item.regex) })).find(item => item.found);
+  return {
+    name: match?.name || 'No disponible',
+    version: match?.found?.[1] || 'No disponible',
+  };
+}
+
+function appSupportBuildBody() {
+  const browser = appSupportParseBrowser();
+  return [
+    'Hola, necesito soporte con Turnos.',
+    '',
+    'Información técnica:',
+    `- Versión de PWA: ${appVisibleVersionHint()}`,
+    `- Versión de móvil / dispositivo: ${appSupportParseDevice()}`,
+    `- Versión de sistema operativo: ${appSupportParseOs()}`,
+    `- Fecha y hora actual: ${new Date().toLocaleString('es-ES')}`,
+    `- Navegador web: ${browser.name}`,
+    `- Versión del navegador web: ${browser.version}`,
+  ].join('\n');
+}
+
+function openSupportAction() {
+  closePrimaryDrawer();
+  const mailto = `mailto:rordenerena@gmail.com?${new URLSearchParams({
+    subject: 'Soporte de turnos',
+    body: appSupportBuildBody(),
+  }).toString()}`;
+  window.setTimeout(() => {
+    window.location.href = mailto;
+  }, 0);
+}
+
 function switchTab(tab) {
   localStorage.setItem(VIEW_KEY, tab);
   document.querySelectorAll('.tab-content').forEach(item => item.classList.toggle('active', item.id === `tab-${tab}`));
