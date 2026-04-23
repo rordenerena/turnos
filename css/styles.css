@@ -184,7 +184,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 #pattern-sequence .pattern-day-empty .pattern-day-shifts::before{content:'Sin turnos';font-size:.75rem;color:var(--muted)}
 #pattern-sequence .pattern-day-actions{position:absolute;top:3px;right:3px;display:flex;gap:6px}
 #pattern-sequence .pattern-day-chip{position:relative;display:inline-flex;align-items:center;justify-content:center;padding:2px 18px 2px 8px;border-radius:999px;color:#fff;font-weight:700;font-size:.8rem;min-width:36px;text-align:center}
-#pattern-sequence .pattern-inline-remove{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border:none;border-radius:999px;background:var(--card);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.18);display:inline-flex;align-items:center;justify-content:center;font-size:.68rem;line-height:1;cursor:pointer;padding:0}
+#pattern-sequence .pattern-inline-remove{position:absolute;bottom:-6px;right:-6px;width:18px;height:18px;border:none;border-radius:999px;background:var(--card);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.18);display:inline-flex;align-items:center;justify-content:center;font-size:.68rem;line-height:1;cursor:pointer;padding:0}
 #pattern-sequence .pattern-day-remove{position:static;width:20px;height:20px;border:1px solid var(--border);box-shadow:none;background:var(--bg)}
 #pattern-sequence .pattern-day-remove:hover,#pattern-sequence .pattern-inline-remove:hover{opacity:.85}
 #pattern-sequence .pattern-new-day{align-items:flex-start;justify-content:center;min-width:48px;padding-top:8px;cursor:pointer;color:var(--text);background:var(--bg);border-style:dashed;transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease}
