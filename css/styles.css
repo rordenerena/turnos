@@ -112,6 +112,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .cal-day.today{background:var(--today-bg)}
 .cal-day.adjacent-month.today{opacity:.48}
 .cal-day .day-num{position:absolute;top:5px;right:6px;z-index:3;color:var(--text);font-weight:700;font-size:.68rem;line-height:1}
+.cal-day.has-shifts .day-num{color:#111}
 .cal-day .day-shifts{position:absolute;inset:0;display:flex;flex-direction:column;align-items:stretch;justify-content:stretch;gap:0}
 .cal-day .day-shift{flex:1 1 0;min-height:0;display:flex;align-items:stretch;justify-content:stretch;width:100%;padding:0;color:#3a2f1d;font-weight:700;font-size:.65rem;text-align:center;line-height:1.1;border-radius:0}
 .cal-day .day-shift + .day-shift{border-top:1px solid rgba(255,255,255,.42)}
@@ -134,6 +135,28 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .cal-day .day-shift-note{display:block;width:100%;font-weight:500;font-size:.55rem;opacity:.92;margin-top:4px;line-height:1.15;padding:0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cal-day .day-events{position:absolute;left:4px;right:4px;bottom:4px;z-index:3;font-size:.6rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;padding:1px 4px;border-radius:999px;background:rgba(255,255,255,.78);box-shadow:0 1px 2px rgba(0,0,0,.12)}
 .cal-day .event-dot{display:inline-block;width:5px;height:5px;background:var(--accent);border-radius:50%;margin-right:2px;vertical-align:middle}
+
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .cal-day .day-shift,
+  :root:not([data-theme="light"]) .cal-day .day-shift.s-M,
+  :root:not([data-theme="light"]) .cal-day .day-shift.s-T,
+  :root:not([data-theme="light"]) .cal-day .day-shift.s-N,
+  :root:not([data-theme="light"]) .cal-day .day-shift.s-R,
+  :root:not([data-theme="light"]) .cal-day .day-shift.s-V,
+  :root:not([data-theme="light"]) .cal-day .day-shift-note{
+    color:#111;
+  }
+}
+
+:root[data-theme="dark"] .cal-day .day-shift,
+:root[data-theme="dark"] .cal-day .day-shift.s-M,
+:root[data-theme="dark"] .cal-day .day-shift.s-T,
+:root[data-theme="dark"] .cal-day .day-shift.s-N,
+:root[data-theme="dark"] .cal-day .day-shift.s-R,
+:root[data-theme="dark"] .cal-day .day-shift.s-V,
+:root[data-theme="dark"] .cal-day .day-shift-note{
+  color:#111;
+}
 
 /* Cards */
 .card{background:var(--card);padding:12px;border-radius:var(--radius);border:1px solid var(--border);margin-bottom:10px}
