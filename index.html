@@ -294,6 +294,40 @@
       </div>
     </div>
 
+    <div id="turnos-duplicates-overlay" class="dialog-overlay hidden" onclick="turnosDuplicateDialogClose(event)">
+      <div class="dialog-card turnos-duplicates-dialog">
+        <div class="dialog-header">
+          <h3>Calendarios Turnos duplicados</h3>
+          <button class="btn btn-sm btn-ghost icon-button" type="button" onclick="turnosDuplicateDialogClose()" aria-label="Cerrar diálogo">
+            <span class="icon-inline" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6L6 18"></path>
+                <path d="M6 6l12 12"></path>
+              </svg>
+            </span>
+          </button>
+        </div>
+        <p class="hint">Se han encontrado varios calendarios <strong>Turnos</strong> administrados por la app.</p>
+        <p id="turnos-duplicates-canonical" class="turnos-duplicates-copy"></p>
+        <p id="turnos-duplicates-count" class="hint"></p>
+        <ul id="turnos-duplicates-list" class="turnos-duplicates-list"></ul>
+        <p id="turnos-duplicates-warning" class="turnos-duplicates-warning"></p>
+        <p id="turnos-duplicates-feedback" class="turnos-duplicates-feedback hidden"></p>
+        <div class="dialog-actions turnos-duplicates-actions">
+          <button id="turnos-duplicates-later-btn" class="btn" type="button" onclick="turnosDuplicateDialogMoreLater()">Más tarde</button>
+          <button id="turnos-duplicates-delete-btn" class="btn btn-danger" type="button" onclick="turnosDuplicateDialogDelete()">Borrar duplicados</button>
+          <button id="turnos-duplicates-merge-btn" class="btn btn-primary" type="button" onclick="turnosDuplicateDialogMerge()">Combinar y limpiar</button>
+        </div>
+        <div id="turnos-duplicates-confirm-actions" class="turnos-duplicates-confirm hidden">
+          <p id="turnos-duplicates-delete-hint" class="turnos-duplicates-danger"></p>
+          <div class="dialog-actions turnos-duplicates-actions">
+            <button id="turnos-duplicates-confirm-back-btn" class="btn" type="button" onclick="turnosDuplicateDialogBackFromDelete()">Volver</button>
+            <button id="turnos-duplicates-confirm-delete-btn" class="btn btn-danger" type="button" onclick="turnosDuplicateDialogConfirmDelete()">Sí, borrar duplicados</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Day Modal -->
     <div id="modal-overlay" class="hidden" onclick="modalCancel(event)">
       <div id="modal">

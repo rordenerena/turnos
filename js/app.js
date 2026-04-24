@@ -3,6 +3,14 @@
 let _headerTaps = 0;
 let _headerTimer = null;
 let _swUpdateInFlight = null;
+let turnosDuplicateDialogState = {
+  open: false,
+  busy: false,
+  step: 'summary',
+  summary: null,
+  feedback: '',
+  error: '',
+};
 const VIEW_KEY = 'turnos_view';
 const HEADER_VIEW_CONFIG = {
   calendar: { title: '📅 Turnos', button: 'menu' },
@@ -306,6 +314,184 @@ function openSupportAction() {
   }, 0);
 }
 
+function turnosDuplicateDialogSetState(nextState = {}) {
+  turnosDuplicateDialogState = {
+    ...turnosDuplicateDialogState,
+    ...nextState,
+  };
+  renderTurnosDuplicateDialog();
+}
+
+function turnosDuplicateDialogClose(event) {
+  if (turnosDuplicateDialogState.busy) return;
+  if (event?.target && event.target.id !== 'turnos-duplicates-overlay') return;
+  turnosDuplicateDialogSetState({
+    open: false,
+    step: 'summary',
+    feedback: '',
+    error: '',
+  });
+}
+
+function turnosDuplicateDialogMoreLater() {
+  turnosDuplicateDialogClose();
+}
+
+function turnosDuplicateDialogCurrentSummary() {
+  return turnosDuplicateDialogState.summary || googleCalendarGetAppDuplicateSummary() || null;
+}
+
+function turnosDuplicateDialogHasEventfulDuplicates(summary) {
+  return (summary?.duplicates || []).some(item => item.hasEvents);
+}
+
+function renderTurnosDuplicateDialog() {
+  const overlay = document.getElementById('turnos-duplicates-overlay');
+  const canonical = document.getElementById('turnos-duplicates-canonical');
+  const count = document.getElementById('turnos-duplicates-count');
+  const list = document.getElementById('turnos-duplicates-list');
+  const warning = document.getElementById('turnos-duplicates-warning');
+  const feedback = document.getElementById('turnos-duplicates-feedback');
+  const deleteHint = document.getElementById('turnos-duplicates-delete-hint');
+  const mergeBtn = document.getElementById('turnos-duplicates-merge-btn');
+  const deleteBtn = document.getElementById('turnos-duplicates-delete-btn');
+  const laterBtn = document.getElementById('turnos-duplicates-later-btn');
+  const confirmWrap = document.getElementById('turnos-duplicates-confirm-actions');
+  const confirmDeleteBtn = document.getElementById('turnos-duplicates-confirm-delete-btn');
+  const confirmBackBtn = document.getElementById('turnos-duplicates-confirm-back-btn');
+  if (!overlay || !canonical || !count || !list || !warning || !feedback || !deleteHint || !mergeBtn || !deleteBtn || !laterBtn || !confirmWrap || !confirmDeleteBtn || !confirmBackBtn) return;
+
+  const summary = turnosDuplicateDialogCurrentSummary();
+  overlay.classList.toggle('hidden', !turnosDuplicateDialogState.open);
+  if (!summary) return;
+
+  canonical.innerHTML = `Se seguirá usando <strong>${escapeHtml(summary.canonical?.summary || 'Turnos')}</strong> (${escapeHtml(summary.canonical?.shortId || 'sin id')}).`;
+  count.textContent = `Hay ${summary.duplicatesCount} duplicado${summary.duplicatesCount === 1 ? '' : 's'} de Turnos creado${summary.duplicatesCount === 1 ? '' : 's'} por la app.`;
+  list.innerHTML = (summary.duplicates || []).map(item => `
+    <li>
+       <strong>${escapeHtml(item.summary || 'Turnos')}</strong>
+       <span>${escapeHtml(item.shortId || '')}</span>
+       ${item.eventCount == null ? '' : `<span>${item.hasEvents ? `${item.eventCount} elemento${item.eventCount === 1 ? '' : 's'}` : 'Vacío'}</span>`}
+     </li>
+   `).join('');
+
+  const hasEvents = turnosDuplicateDialogHasEventfulDuplicates(summary);
+  warning.textContent = hasEvents
+    ? 'Si combinás, se intentarán copiar al calendario canónico los eventos y patrones que falten antes de borrar los duplicados.'
+    : 'Los duplicados están vacíos o sin contenido activo; podés borrarlos directamente si querés.';
+  deleteHint.textContent = hasEvents
+    ? '⚠️ Se borrarán calendarios que todavía tienen contenido. Esta acción NO se puede deshacer.'
+    : 'Los duplicados detectados no tienen contenido activo. El borrado será directo.';
+
+  const toneClass = turnosDuplicateDialogState.error ? 'turnos-duplicates-feedback error' : 'turnos-duplicates-feedback';
+  feedback.className = toneClass + (turnosDuplicateDialogState.feedback || turnosDuplicateDialogState.error ? '' : ' hidden');
+  feedback.textContent = turnosDuplicateDialogState.error || turnosDuplicateDialogState.feedback || '';
+
+  const isBusy = turnosDuplicateDialogState.busy;
+  mergeBtn.disabled = isBusy;
+  deleteBtn.disabled = isBusy;
+  laterBtn.disabled = isBusy;
+  confirmDeleteBtn.disabled = isBusy;
+  confirmBackBtn.disabled = isBusy;
+
+  mergeBtn.textContent = isBusy && turnosDuplicateDialogState.step === 'summary' ? 'Procesando…' : 'Combinar y limpiar';
+  deleteBtn.textContent = isBusy && turnosDuplicateDialogState.step === 'summary' ? 'Procesando…' : 'Borrar duplicados';
+  laterBtn.textContent = 'Más tarde';
+  confirmDeleteBtn.textContent = isBusy ? 'Borrando…' : 'Sí, borrar duplicados';
+  mergeBtn.classList.toggle('hidden', turnosDuplicateDialogState.step !== 'summary');
+  deleteBtn.classList.toggle('hidden', turnosDuplicateDialogState.step !== 'summary');
+  laterBtn.classList.toggle('hidden', turnosDuplicateDialogState.step !== 'summary');
+  confirmWrap.classList.toggle('hidden', turnosDuplicateDialogState.step !== 'confirm-delete');
+}
+
+async function maybeOpenTurnosDuplicateDialog(forceRefresh = false) {
+  try {
+    const summary = await googleCalendarRefreshAppDuplicateSummary({ includeEventCounts: true, forceRefresh });
+    if (!summary?.duplicatesCount) {
+      turnosDuplicateDialogSetState({
+        open: false,
+        summary,
+        step: 'summary',
+        feedback: '',
+        error: '',
+        busy: false,
+      });
+      return summary;
+    }
+    turnosDuplicateDialogSetState({
+      open: true,
+      summary,
+      step: 'summary',
+      feedback: '',
+      error: '',
+      busy: false,
+    });
+    return summary;
+  } catch (error) {
+    console.warn('No se pudo comprobar si hay calendarios Turnos duplicados', error);
+    return null;
+  }
+}
+
+async function turnosDuplicateDialogMerge() {
+  const summary = turnosDuplicateDialogCurrentSummary();
+  if (!summary?.duplicatesCount || turnosDuplicateDialogState.busy) return;
+  turnosDuplicateDialogSetState({ busy: true, feedback: 'Combinando calendarios duplicados…', error: '' });
+  try {
+    const result = await googleCalendarMergeDuplicateAppCalendars();
+    if (result.errors?.length) {
+      turnosDuplicateDialogSetState({
+        busy: false,
+        summary: result.updatedSummary || summary,
+        feedback: '',
+        error: result.errors.join(' · '),
+      });
+      return;
+    }
+    await maybeOpenTurnosDuplicateDialog(true);
+    toast(`Duplicados combinados: ${result.deletedCalendars} calendario${result.deletedCalendars === 1 ? '' : 's'} limpiado${result.deletedCalendars === 1 ? '' : 's'} ✓`);
+  } catch (error) {
+    turnosDuplicateDialogSetState({ busy: false, feedback: '', error: `No se pudieron combinar los duplicados: ${error.message}` });
+  }
+}
+
+function turnosDuplicateDialogDelete() {
+  const summary = turnosDuplicateDialogCurrentSummary();
+  if (!summary?.duplicatesCount || turnosDuplicateDialogState.busy) return;
+  if (turnosDuplicateDialogHasEventfulDuplicates(summary)) {
+    turnosDuplicateDialogSetState({ step: 'confirm-delete', feedback: '', error: '' });
+    return;
+  }
+  turnosDuplicateDialogConfirmDelete();
+}
+
+function turnosDuplicateDialogBackFromDelete() {
+  if (turnosDuplicateDialogState.busy) return;
+  turnosDuplicateDialogSetState({ step: 'summary', feedback: '', error: '' });
+}
+
+async function turnosDuplicateDialogConfirmDelete() {
+  const summary = turnosDuplicateDialogCurrentSummary();
+  if (!summary?.duplicatesCount || turnosDuplicateDialogState.busy) return;
+  turnosDuplicateDialogSetState({ busy: true, feedback: 'Borrando calendarios duplicados…', error: '' });
+  try {
+    const result = await googleCalendarDeleteDuplicateAppCalendars();
+    if (result.errors?.length) {
+      turnosDuplicateDialogSetState({
+        busy: false,
+        summary: result.updatedSummary || summary,
+        feedback: '',
+        error: result.errors.join(' · '),
+      });
+      return;
+    }
+    await maybeOpenTurnosDuplicateDialog(true);
+    toast(`Duplicados borrados: ${result.deletedCalendars} calendario${result.deletedCalendars === 1 ? '' : 's'} eliminado${result.deletedCalendars === 1 ? '' : 's'} ✓`);
+  } catch (error) {
+    turnosDuplicateDialogSetState({ busy: false, feedback: '', error: `No se pudieron borrar los duplicados: ${error.message}` });
+  }
+}
+
 function switchTab(tab) {
   localStorage.setItem(VIEW_KEY, tab);
   document.querySelectorAll('.tab-content').forEach(item => item.classList.toggle('active', item.id === `tab-${tab}`));
@@ -472,6 +658,8 @@ async function bootstrapAuthorizedApp() {
       toast(`No se pudo importar el iCal: ${error.message}`);
     }
   }
+
+  await maybeOpenTurnosDuplicateDialog();
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

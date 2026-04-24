@@ -16,6 +16,7 @@ let googleProfile = null;
 let googleReady = false;
 let googleOwnerCalendar = null;
 let googleDataCalendar = null;
+let googleTurnosDuplicateSummary = null;
 let _googleLoginResolver = null;
 let _googleLoginRejecter = null;
 
@@ -25,6 +26,17 @@ function googleCalendarOwnerId(calendarId) {
 
 function googleCalendarDataId(calendarId) {
   return `data:${calendarId}`;
+}
+
+function googleCalendarCloneJson(value) {
+  return value == null ? value : JSON.parse(JSON.stringify(value));
+}
+
+function googleCalendarShortId(value) {
+  const text = String(value || '').trim();
+  if (!text) return 'sin id';
+  if (text.length <= 26) return text;
+  return `${text.slice(0, 12)}…${text.slice(-10)}`;
 }
 
 function googleCalendarHasSession() {
@@ -201,6 +213,49 @@ async function googleCalendarListAppCalendars() {
   return calendars.filter(googleCalendarIsAppCalendar).sort(googleCalendarCompareCanonicalCandidates);
 }
 
+function googleCalendarBuildAppDuplicateSummary(appCalendars, canonicalCalendar) {
+  const canonical = canonicalCalendar || appCalendars[0] || null;
+  const duplicates = (appCalendars || []).filter(item => canonical && item.id !== canonical.id);
+  return {
+    canonical: canonical ? {
+      id: canonical.id,
+      summary: canonical.summary || TURNOS_CALENDAR_SUMMARY,
+      shortId: googleCalendarShortId(canonical.id),
+    } : null,
+    duplicates: duplicates.map(item => ({
+      id: item.id,
+      summary: item.summary || TURNOS_CALENDAR_SUMMARY,
+      shortId: googleCalendarShortId(item.id),
+      hasEvents: null,
+      eventCount: null,
+    })),
+    duplicatesCount: duplicates.length,
+    totalCalendars: (appCalendars || []).length,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function googleCalendarSetAppDuplicateSummary(summary) {
+  googleTurnosDuplicateSummary = summary ? googleCalendarCloneJson(summary) : null;
+  return googleCalendarGetAppDuplicateSummary();
+}
+
+function googleCalendarGetAppDuplicateSummary() {
+  return googleTurnosDuplicateSummary ? googleCalendarCloneJson(googleTurnosDuplicateSummary) : null;
+}
+
+async function googleCalendarRefreshAppDuplicateSummary(options = {}) {
+  const appCalendars = await googleCalendarListAppCalendars();
+  const summary = googleCalendarBuildAppDuplicateSummary(appCalendars, appCalendars[0] || null);
+  if (options.includeEventCounts && summary.duplicatesCount) {
+    for (const duplicate of summary.duplicates) {
+      duplicate.eventCount = await googleCalendarCountCalendarEvents(duplicate.id);
+      duplicate.hasEvents = duplicate.eventCount > 0;
+    }
+  }
+  return googleCalendarSetAppDuplicateSummary(summary);
+}
+
 function googleCalendarBuildOwnerMeta(calendar) {
   return {
     calendarId: calendar.id,
@@ -261,6 +316,7 @@ async function googleCalendarResolveAppCalendar() {
   }
 
   await googleCalendarEnsurePublicAcl(appCalendar.id);
+  googleCalendarSetAppDuplicateSummary(googleCalendarBuildAppDuplicateSummary(appCalendars, appCalendar));
 
   const meta = googleCalendarBuildOwnerMeta(appCalendar);
   storeSaveOwnerMeta(meta);
@@ -315,6 +371,274 @@ function googleCalendarShiftTypeForEvent(event) {
 
 function googleCalendarEventDate(event) {
   return event.originalStartTime?.date || event.start?.date || null;
+}
+
+function googleCalendarNormalizeDateValue(value) {
+  if (!value) return null;
+  if (value.date) return `date:${value.date}`;
+  return `datetime:${value.dateTime || ''}|tz:${value.timeZone || ''}`;
+}
+
+function googleCalendarNormalizeEventPrivate(event) {
+  const source = googleCalendarEventPrivate(event);
+  const normalized = {};
+  Object.keys(source).sort().forEach(key => {
+    if (key === 'turnosPatternId') return;
+    normalized[key] = String(source[key]);
+  });
+  return normalized;
+}
+
+function googleCalendarEventFingerprint(event, context = {}) {
+  return JSON.stringify({
+    kind: googleCalendarEventPrivate(event).turnosKind || (event.recurrence?.length ? 'pattern' : 'event'),
+    status: event.status || 'confirmed',
+    summary: String(event.summary || '').trim(),
+    description: String(event.description || '').trim(),
+    start: googleCalendarNormalizeDateValue(event.start),
+    end: googleCalendarNormalizeDateValue(event.end),
+    recurrence: (event.recurrence || []).slice(),
+    originalStart: googleCalendarNormalizeDateValue(event.originalStartTime),
+    recurringFingerprint: context.recurringFingerprint || null,
+    private: googleCalendarNormalizeEventPrivate(event),
+  });
+}
+
+function googleCalendarBuildEventFingerprintIndex(events) {
+  const fingerprints = new Set();
+  const masterFingerprints = new Map();
+  const mastersByFingerprint = new Map();
+  const rootsById = new Map();
+
+  (events || []).forEach(event => {
+    if (!event.recurringEventId) rootsById.set(event.id, event);
+  });
+
+  rootsById.forEach(event => {
+    const fingerprint = googleCalendarEventFingerprint(event);
+    masterFingerprints.set(event.id, fingerprint);
+    if (!mastersByFingerprint.has(fingerprint)) mastersByFingerprint.set(fingerprint, event);
+    fingerprints.add(fingerprint);
+  });
+
+  (events || []).forEach(event => {
+    if (!event.recurringEventId) return;
+    const fingerprint = googleCalendarEventFingerprint(event, {
+      recurringFingerprint: masterFingerprints.get(event.recurringEventId) || null,
+    });
+    fingerprints.add(fingerprint);
+  });
+
+  return {
+    fingerprints,
+    masterFingerprints,
+    mastersByFingerprint,
+    rootsById,
+  };
+}
+
+async function googleCalendarListCalendarRawEvents(calendarId, options = {}) {
+  return googleCalendarListAll(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
+    singleEvents: 'false',
+    showDeleted: options.showDeleted === false ? 'false' : 'true',
+    maxResults: String(options.maxResults || 2500),
+  });
+}
+
+async function googleCalendarCountCalendarEvents(calendarId) {
+  const events = await googleCalendarListCalendarRawEvents(calendarId, { showDeleted: false });
+  return events.filter(event => event.status !== 'cancelled' || !!event.recurringEventId).length;
+}
+
+function googleCalendarBuildTransferredEventPayload(event) {
+  const privateProps = googleCalendarCloneJson(googleCalendarEventPrivate(event));
+  const payload = {
+    summary: event.summary || '',
+    description: event.description || '',
+    start: googleCalendarCloneJson(event.start),
+    end: googleCalendarCloneJson(event.end),
+  };
+  if (event.recurrence?.length) payload.recurrence = event.recurrence.slice();
+  if (Object.keys(privateProps).length) payload.extendedProperties = { private: privateProps };
+  if (event.transparency) payload.transparency = event.transparency;
+  if (event.visibility) payload.visibility = event.visibility;
+  if (event.colorId) payload.colorId = event.colorId;
+  if (event.reminders) payload.reminders = googleCalendarCloneJson(event.reminders);
+  return payload;
+}
+
+function googleCalendarBuildTransferredExceptionPayload(event) {
+  const payload = googleCalendarBuildTransferredEventPayload(event);
+  delete payload.recurrence;
+  return payload;
+}
+
+async function googleCalendarCreateCalendarEvent(calendarId, payload) {
+  return googleApiFetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+async function googleCalendarPatchCalendarEvent(calendarId, eventId, payload) {
+  return googleApiFetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+async function googleCalendarDeleteCalendarById(calendarId) {
+  return googleApiFetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}`, {
+    method: 'DELETE',
+  });
+}
+
+async function googleCalendarFindRecurringInstance(calendarId, recurringEventId, originalStartDate) {
+  if (!originalStartDate) return null;
+  const instances = await googleCalendarListAll(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(recurringEventId)}/instances`, {
+    showDeleted: 'true',
+    maxResults: '12',
+    timeMin: `${originalStartDate}T00:00:00Z`,
+    timeMax: `${addDays(originalStartDate, 1)}T00:00:00Z`,
+  });
+  return instances.find(item => googleCalendarEventDate(item) === originalStartDate) || null;
+}
+
+async function googleCalendarMergeSingleDuplicateCalendar(sourceCalendar, canonicalCalendarId) {
+  const sourceEvents = (await googleCalendarListCalendarRawEvents(sourceCalendar.id)).filter(event => event.status !== 'cancelled' || event.recurringEventId);
+  const targetEvents = await googleCalendarListCalendarRawEvents(canonicalCalendarId);
+  const sourceIndex = googleCalendarBuildEventFingerprintIndex(sourceEvents);
+  const targetIndex = googleCalendarBuildEventFingerprintIndex(targetEvents);
+  const result = {
+    calendarId: sourceCalendar.id,
+    summary: sourceCalendar.summary || TURNOS_CALENDAR_SUMMARY,
+    inserted: 0,
+    skipped: 0,
+    exceptionsApplied: 0,
+    deleted: false,
+  };
+
+  for (const event of sourceEvents.filter(item => !item.recurringEventId)) {
+    const fingerprint = sourceIndex.masterFingerprints.get(event.id) || googleCalendarEventFingerprint(event);
+    if (targetIndex.fingerprints.has(fingerprint)) {
+      result.skipped += 1;
+      continue;
+    }
+    const created = await googleCalendarCreateCalendarEvent(canonicalCalendarId, googleCalendarBuildTransferredEventPayload(event));
+    targetIndex.fingerprints.add(fingerprint);
+    if (created?.id) {
+      targetIndex.masterFingerprints.set(created.id, fingerprint);
+      if (!targetIndex.mastersByFingerprint.has(fingerprint)) targetIndex.mastersByFingerprint.set(fingerprint, created);
+    }
+    result.inserted += 1;
+  }
+
+  for (const event of sourceEvents.filter(item => item.recurringEventId)) {
+    const recurringFingerprint = sourceIndex.masterFingerprints.get(event.recurringEventId) || null;
+    const targetMaster = recurringFingerprint ? targetIndex.mastersByFingerprint.get(recurringFingerprint) : null;
+    const fingerprint = googleCalendarEventFingerprint(event, { recurringFingerprint });
+    if (targetIndex.fingerprints.has(fingerprint)) {
+      result.skipped += 1;
+      continue;
+    }
+    if (!targetMaster?.id) {
+      throw new Error(`No se pudo localizar la serie destino para la excepción ${googleCalendarShortId(event.id)}`);
+    }
+    const targetInstance = await googleCalendarFindRecurringInstance(canonicalCalendarId, targetMaster.id, event.originalStartTime?.date || event.start?.date);
+    if (!targetInstance?.id) {
+      throw new Error(`No se pudo localizar la instancia destino ${event.originalStartTime?.date || event.start?.date || ''}`.trim());
+    }
+    if (event.status === 'cancelled') {
+      await googleCalendarPatchCalendarEvent(canonicalCalendarId, targetInstance.id, { status: 'cancelled' });
+    } else {
+      await googleCalendarPatchCalendarEvent(canonicalCalendarId, targetInstance.id, googleCalendarBuildTransferredExceptionPayload(event));
+    }
+    targetIndex.fingerprints.add(fingerprint);
+    result.exceptionsApplied += 1;
+  }
+
+  await googleCalendarDeleteCalendarById(sourceCalendar.id);
+  result.deleted = true;
+  return result;
+}
+
+async function googleCalendarMergeDuplicateAppCalendars() {
+  const summary = await googleCalendarRefreshAppDuplicateSummary({ includeEventCounts: false });
+  if (!summary?.duplicatesCount || !summary.canonical?.id) {
+    return {
+      action: 'merge',
+      mergedCalendars: 0,
+      deletedCalendars: 0,
+      skippedEvents: 0,
+      copiedEvents: 0,
+      errors: [],
+      updatedSummary: summary,
+    };
+  }
+
+  const results = [];
+  const errors = [];
+
+  for (const duplicate of summary.duplicates) {
+    try {
+      results.push(await googleCalendarMergeSingleDuplicateCalendar(duplicate, summary.canonical.id));
+    } catch (error) {
+      errors.push(`No se pudo combinar ${duplicate.shortId}: ${error.message}`);
+      results.push({
+        calendarId: duplicate.id,
+        summary: duplicate.summary,
+        inserted: 0,
+        skipped: 0,
+        exceptionsApplied: 0,
+        deleted: false,
+        error: error.message,
+      });
+    }
+  }
+
+  await googleCalendarRefreshOwner({ silent: true });
+  const updatedSummary = await googleCalendarRefreshAppDuplicateSummary({ includeEventCounts: true });
+  return {
+    action: 'merge',
+    mergedCalendars: results.filter(item => !item.error).length,
+    deletedCalendars: results.filter(item => item.deleted).length,
+    skippedEvents: results.reduce((total, item) => total + (item.skipped || 0), 0),
+    copiedEvents: results.reduce((total, item) => total + (item.inserted || 0) + (item.exceptionsApplied || 0), 0),
+    calendarResults: results,
+    errors,
+    updatedSummary,
+  };
+}
+
+async function googleCalendarDeleteDuplicateAppCalendars() {
+  const summary = await googleCalendarRefreshAppDuplicateSummary({ includeEventCounts: true });
+  if (!summary?.duplicatesCount) {
+    return {
+      action: 'delete',
+      deletedCalendars: 0,
+      errors: [],
+      updatedSummary: summary,
+    };
+  }
+
+  const errors = [];
+  let deletedCalendars = 0;
+  for (const duplicate of summary.duplicates) {
+    try {
+      await googleCalendarDeleteCalendarById(duplicate.id);
+      deletedCalendars += 1;
+    } catch (error) {
+      errors.push(`No se pudo borrar ${duplicate.shortId}: ${error.message}`);
+    }
+  }
+
+  const updatedSummary = await googleCalendarRefreshAppDuplicateSummary({ includeEventCounts: true });
+  return {
+    action: 'delete',
+    deletedCalendars,
+    errors,
+    updatedSummary,
+  };
 }
 
 function googleCalendarPush(target, key, item) {
@@ -684,10 +1008,7 @@ function googleCalendarEventPayload(ds, text) {
 
 async function googleCalendarCreateEvent(payload) {
   const meta = storeGetOwnerMeta();
-  return googleApiFetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(meta.calendarId)}/events`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  return googleCalendarCreateCalendarEvent(meta.calendarId, payload);
 }
 
 async function googleCalendarDeleteEvent(eventId) {
@@ -699,10 +1020,7 @@ async function googleCalendarDeleteEvent(eventId) {
 
 async function googleCalendarPatchEvent(eventId, payload) {
   const meta = storeGetOwnerMeta();
-  return googleApiFetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(meta.calendarId)}/events/${encodeURIComponent(eventId)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(payload),
-  });
+  return googleCalendarPatchCalendarEvent(meta.calendarId, eventId, payload);
 }
 
 async function googleCalendarReplaceDayContent(ds, nextShifts, nextEvents) {
