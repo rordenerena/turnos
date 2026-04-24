@@ -280,8 +280,36 @@ function googleCalendarIsDataCalendar(item) {
 }
 
 async function googleCalendarListDataCalendars() {
-  const calendars = await googleCalendarListAll('https://www.googleapis.com/calendar/v3/users/me/calendarList', { minAccessRole: 'owner' });
+  const calendars = await googleCalendarListAll('https://www.googleapis.com/calendar/v3/users/me/calendarList', { minAccessRole: 'owner', showHidden: 'true' });
   return calendars.filter(googleCalendarIsDataCalendar).sort(googleCalendarComparePreferredCandidates(TURNOS_DATA_CALENDAR_SUMMARY));
+}
+
+async function googleCalendarSelectCanonicalDataCalendar(dataCalendars) {
+  const candidates = Array.isArray(dataCalendars) ? dataCalendars.slice() : [];
+  if (!candidates.length) return null;
+  if (candidates.length === 1) return candidates[0];
+
+  const scored = await Promise.all(candidates.map(async calendar => {
+    try {
+      const items = await googleCalendarListAll(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendar.id)}/events`, {
+        singleEvents: 'true',
+        showDeleted: 'false',
+        maxResults: '2500',
+        privateExtendedProperty: `turnosKind=${TURNOS_DATA_CONFIG_KIND}`,
+      });
+      return { calendar, configCount: (items || []).filter(item => item.status !== 'cancelled').length };
+    } catch (error) {
+      console.warn('No se pudo puntuar un calendario de datos duplicado', error);
+      return { calendar, configCount: -1 };
+    }
+  }));
+
+  scored.sort((left, right) => {
+    if (left.configCount !== right.configCount) return right.configCount - left.configCount;
+    return googleCalendarComparePreferredCandidates(TURNOS_DATA_CALENDAR_SUMMARY)(left.calendar, right.calendar);
+  });
+
+  return scored[0]?.calendar || candidates[0];
 }
 
 async function googleCalendarEnsureDataCalendarHidden(calendarId) {
@@ -332,7 +360,7 @@ async function googleCalendarResolveAppCalendar() {
 
 async function googleCalendarResolveDataCalendar() {
   let dataCalendars = await googleCalendarListDataCalendars();
-  let dataCalendar = dataCalendars[0] || null;
+  let dataCalendar = await googleCalendarSelectCanonicalDataCalendar(dataCalendars);
 
   if (!dataCalendar) {
     await googleApiFetch('https://www.googleapis.com/calendar/v3/calendars', {
@@ -344,7 +372,7 @@ async function googleCalendarResolveDataCalendar() {
       }),
     });
     dataCalendars = await googleCalendarListDataCalendars();
-    dataCalendar = dataCalendars[0] || null;
+    dataCalendar = await googleCalendarSelectCanonicalDataCalendar(dataCalendars);
   }
 
   if (!dataCalendar) {
