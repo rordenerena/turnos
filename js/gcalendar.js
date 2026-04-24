@@ -4,6 +4,10 @@ const GOOGLE_CLIENT_ID = '743453800087-molu80v03v3ms24ovp194vscc53nr6aj.apps.goo
 const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
 const TURNOS_CALENDAR_SUMMARY = 'Turnos';
 const TURNOS_CALENDAR_MARKER = 'turnosApp=1';
+const TURNOS_DATA_CALENDAR_SUMMARY = 'Turnos · Datos';
+const TURNOS_DATA_CALENDAR_MARKER = 'turnosDataApp=1';
+const TURNOS_DATA_CONFIG_KIND = 'imported-config';
+const TURNOS_DATA_CONFIG_DATE = '2000-01-01';
 
 let googleToken = null;
 let googleTokenExpiry = 0;
@@ -11,11 +15,16 @@ let googleTokenClient = null;
 let googleProfile = null;
 let googleReady = false;
 let googleOwnerCalendar = null;
+let googleDataCalendar = null;
 let _googleLoginResolver = null;
 let _googleLoginRejecter = null;
 
 function googleCalendarOwnerId(calendarId) {
   return `owner:${calendarId}`;
+}
+
+function googleCalendarDataId(calendarId) {
+  return `data:${calendarId}`;
 }
 
 function googleCalendarHasSession() {
@@ -172,6 +181,21 @@ function googleCalendarCompareCanonicalCandidates(a, b) {
   return 0;
 }
 
+function googleCalendarComparePreferredCandidates(preferredSummary) {
+  const normalizedPreferred = String(preferredSummary || '').trim().toLocaleLowerCase('es');
+  return (a, b) => {
+    const leftSummary = String(a?.summary || '').trim().toLocaleLowerCase('es');
+    const rightSummary = String(b?.summary || '').trim().toLocaleLowerCase('es');
+    const left = [leftSummary !== normalizedPreferred, leftSummary, String(a?.id || '')];
+    const right = [rightSummary !== normalizedPreferred, rightSummary, String(b?.id || '')];
+    for (let index = 0; index < left.length; index += 1) {
+      if (left[index] < right[index]) return -1;
+      if (left[index] > right[index]) return 1;
+    }
+    return 0;
+  };
+}
+
 async function googleCalendarListAppCalendars() {
   const calendars = await googleCalendarListAll('https://www.googleapis.com/calendar/v3/users/me/calendarList', { minAccessRole: 'owner' });
   return calendars.filter(googleCalendarIsAppCalendar).sort(googleCalendarCompareCanonicalCandidates);
@@ -184,6 +208,35 @@ function googleCalendarBuildOwnerMeta(calendar) {
     summary: calendar.summary || TURNOS_CALENDAR_SUMMARY,
     updatedAt: new Date().toISOString(),
   };
+}
+
+function googleCalendarBuildDataMeta(calendar) {
+  return {
+    calendarId: calendar.id,
+    summary: calendar.summary || TURNOS_DATA_CALENDAR_SUMMARY,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function googleCalendarIsDataCalendar(item) {
+  return !!item && item.accessRole === 'owner' && (item.description || '').includes(TURNOS_DATA_CALENDAR_MARKER);
+}
+
+async function googleCalendarListDataCalendars() {
+  const calendars = await googleCalendarListAll('https://www.googleapis.com/calendar/v3/users/me/calendarList', { minAccessRole: 'owner' });
+  return calendars.filter(googleCalendarIsDataCalendar).sort(googleCalendarComparePreferredCandidates(TURNOS_DATA_CALENDAR_SUMMARY));
+}
+
+async function googleCalendarEnsureDataCalendarHidden(calendarId) {
+  try {
+    return await googleApiFetch(`https://www.googleapis.com/calendar/v3/users/me/calendarList/${encodeURIComponent(calendarId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ selected: false, hidden: true }),
+    });
+  } catch (error) {
+    console.warn('No se pudo ocultar el calendario privado de datos', error);
+    return null;
+  }
 }
 
 async function googleCalendarResolveAppCalendar() {
@@ -217,6 +270,38 @@ async function googleCalendarResolveAppCalendar() {
     readonly: false,
     sourceType: 'google',
   };
+}
+
+async function googleCalendarResolveDataCalendar() {
+  let dataCalendars = await googleCalendarListDataCalendars();
+  let dataCalendar = dataCalendars[0] || null;
+
+  if (!dataCalendar) {
+    await googleApiFetch('https://www.googleapis.com/calendar/v3/calendars', {
+      method: 'POST',
+      body: JSON.stringify({
+        summary: TURNOS_DATA_CALENDAR_SUMMARY,
+        description: `Calendario privado de metadatos administrado por la app Turnos\n${TURNOS_DATA_CALENDAR_MARKER}`,
+        timeZone: 'UTC',
+      }),
+    });
+    dataCalendars = await googleCalendarListDataCalendars();
+    dataCalendar = dataCalendars[0] || null;
+  }
+
+  if (!dataCalendar) {
+    throw new Error('No se pudo resolver el calendario privado de datos de Turnos');
+  }
+
+  await googleCalendarEnsureDataCalendarHidden(dataCalendar.id);
+
+  const meta = googleCalendarBuildDataMeta(dataCalendar);
+  googleDataCalendar = {
+    ...meta,
+    id: googleCalendarDataId(dataCalendar.id),
+  };
+  storeSaveDataMeta(meta);
+  return googleDataCalendar;
 }
 
 function googleCalendarEventPrivate(event) {
@@ -396,6 +481,177 @@ async function googleCalendarRefreshOwner(options = {}) {
   return googleOwnerCalendar;
 }
 
+function googleCalendarImportedConfigDescription(payload) {
+  return JSON.stringify(payload, null, 2);
+}
+
+async function googleCalendarBuildDeterministicEventId(canonicalKey) {
+  if (!crypto?.subtle?.digest) {
+    let hash = 2166136261;
+    String(canonicalKey || 'turnos-import').split('').forEach(char => {
+      hash ^= char.charCodeAt(0);
+      hash = Math.imul(hash, 16777619);
+    });
+    return `turnosimp${Math.abs(hash >>> 0).toString(32)}`;
+  }
+  const input = new TextEncoder().encode(String(canonicalKey || 'turnos-import'));
+  const digest = await crypto.subtle.digest('SHA-256', input);
+  const bytes = new Uint8Array(digest);
+  const alphabet = '0123456789abcdefghijklmnopqrstuv';
+  let bits = 0;
+  let value = 0;
+  let output = 'turnosimp';
+
+  bytes.forEach(byte => {
+    value = (value << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      output += alphabet[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  });
+
+  if (bits > 0) output += alphabet[(value << (5 - bits)) & 31];
+  return output;
+}
+
+function googleCalendarImportedConfigPayload(source) {
+  const canonicalKey = source.canonicalKey || storeImportedCanonicalKey(source);
+  const turnosImportId = source.turnosImportId || storeImportedStableId(source);
+  const googleCalendarId = storeCleanIdentityValue(source.googleCalendarId) || null;
+  const payload = {
+    version: 1,
+    turnosImportId,
+    canonicalKey,
+    sourceType: source.sourceType || (googleCalendarId ? 'google-public' : 'ical'),
+    icalUrl: storeNormalizeImportedUrl(source.icalUrl),
+    googleCalendarId,
+    aliasName: storeCleanImportedAlias(source.aliasName),
+    name: storeCleanIdentityValue(source.name),
+    ownerName: storeCleanIdentityValue(source.ownerName),
+    ownerEmail: storeCleanIdentityValue(source.ownerEmail),
+    updatedAt: new Date().toISOString(),
+  };
+  return {
+    summary: `Importado · ${storeImportedCalendarName({ ...source, canonicalKey, turnosImportId })}`,
+    description: googleCalendarImportedConfigDescription(payload),
+    start: { date: TURNOS_DATA_CONFIG_DATE },
+    end: { date: addDays(TURNOS_DATA_CONFIG_DATE, 1) },
+    transparency: 'transparent',
+    visibility: 'private',
+    extendedProperties: {
+      private: {
+        turnosApp: '1',
+        turnosKind: TURNOS_DATA_CONFIG_KIND,
+        turnosCanonicalKey: canonicalKey,
+        turnosImportId,
+        turnosSourceType: payload.sourceType,
+        ...(googleCalendarId ? { turnosGoogleCalendarId: googleCalendarId.toLowerCase() } : {}),
+      },
+    },
+  };
+}
+
+function googleCalendarImportedConfigParseDescription(event) {
+  try {
+    return JSON.parse(event.description || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function googleCalendarIsNotFoundError(error) {
+  return /not found/i.test(String(error?.message || ''));
+}
+
+function googleCalendarHydrateImportedFromConfigEvent(event) {
+  const priv = googleCalendarEventPrivate(event);
+  const payload = googleCalendarImportedConfigParseDescription(event);
+  const meta = {
+    id: payload.turnosImportId || priv.turnosImportId || storeImportedStableId({
+      googleCalendarId: payload.googleCalendarId || priv.turnosGoogleCalendarId || '',
+      icalUrl: payload.icalUrl || '',
+    }),
+    turnosImportId: payload.turnosImportId || priv.turnosImportId || '',
+    canonicalKey: payload.canonicalKey || priv.turnosCanonicalKey || '',
+    sourceType: payload.sourceType || priv.turnosSourceType || 'ical',
+    icalUrl: payload.icalUrl || '',
+    googleCalendarId: payload.googleCalendarId || priv.turnosGoogleCalendarId || null,
+    aliasName: payload.aliasName || '',
+    name: payload.name || event.summary || '',
+    ownerName: payload.ownerName || '',
+    ownerEmail: payload.ownerEmail || '',
+    remoteConfigEventId: event.id,
+    remoteUpdatedAt: event.updated || null,
+  };
+  if (!meta.turnosImportId) meta.turnosImportId = meta.id;
+  if (!meta.canonicalKey) meta.canonicalKey = storeImportedCanonicalKey(meta);
+  return meta;
+}
+
+async function googleCalendarListImportedConfigEvents() {
+  const meta = storeGetDataMeta();
+  if (!meta?.calendarId) throw new Error('No hay calendario privado de datos configurado');
+  const events = await googleCalendarListAll(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(meta.calendarId)}/events`, {
+    singleEvents: 'true',
+    showDeleted: 'false',
+    maxResults: '2500',
+    privateExtendedProperty: `turnosKind=${TURNOS_DATA_CONFIG_KIND}`,
+  });
+  return events.filter(event => event.status !== 'cancelled');
+}
+
+async function googleCalendarListImportedConfigs() {
+  const events = await googleCalendarListImportedConfigEvents();
+  return events.map(googleCalendarHydrateImportedFromConfigEvent);
+}
+
+async function googleCalendarUpsertImportedConfig(source) {
+  const meta = storeGetDataMeta();
+  if (!meta?.calendarId) throw new Error('No hay calendario privado de datos configurado');
+  const canonicalKey = source.canonicalKey || storeImportedCanonicalKey(source);
+  if (!canonicalKey) throw new Error('No se pudo resolver la identidad del calendario importado');
+  const eventId = await googleCalendarBuildDeterministicEventId(canonicalKey);
+  const payload = googleCalendarImportedConfigPayload({
+    ...source,
+    id: source.turnosImportId || storeImportedStableId(source),
+    turnosImportId: source.turnosImportId || storeImportedStableId(source),
+    canonicalKey,
+  });
+  try {
+    return await googleApiFetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(meta.calendarId)}/events/${encodeURIComponent(eventId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    if (!googleCalendarIsNotFoundError(error)) throw error;
+    return googleApiFetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(meta.calendarId)}/events`, {
+      method: 'POST',
+      body: JSON.stringify({
+        id: eventId,
+        ...payload,
+      }),
+    });
+  }
+}
+
+async function googleCalendarDeleteImportedConfig(source) {
+  const meta = storeGetDataMeta();
+  if (!meta?.calendarId) throw new Error('No hay calendario privado de datos configurado');
+  const canonicalKey = typeof source === 'string'
+    ? storeImportedCanonicalKey(storeGetImportedById(source) || { id: source })
+    : storeImportedCanonicalKey(source);
+  if (!canonicalKey) return;
+  const eventId = await googleCalendarBuildDeterministicEventId(canonicalKey);
+  try {
+    await googleApiFetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(meta.calendarId)}/events/${encodeURIComponent(eventId)}`, {
+      method: 'DELETE',
+    });
+  } catch (error) {
+    if (!googleCalendarIsNotFoundError(error)) throw error;
+  }
+}
+
 function googleCalendarShiftPayload(ds, shift) {
   return {
     summary: shift.type,
@@ -536,17 +792,23 @@ async function googleCalendarDeletePattern(patternId, mode = 'fromToday') {
 }
 
 async function googleCalendarDeleteEverythingRemote() {
-  const meta = storeGetOwnerMeta();
-  if (meta?.calendarId) {
-    await googleApiFetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(meta.calendarId)}`, { method: 'DELETE' });
+  const ownerMeta = storeGetOwnerMeta();
+  const dataMeta = storeGetDataMeta();
+  if (ownerMeta?.calendarId) {
+    await googleApiFetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(ownerMeta.calendarId)}`, { method: 'DELETE' });
+  }
+  if (dataMeta?.calendarId) {
+    await googleApiFetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(dataMeta.calendarId)}`, { method: 'DELETE' });
   }
   storeClearOwnerMeta();
+  storeClearDataMeta();
 }
 
 async function googleCalendarBootstrap() {
   if (!googleCalendarHasSession()) throw new Error('Necesitás iniciar sesión');
   await googleCalendarFetchProfile();
   await googleCalendarResolveAppCalendar();
+  await googleCalendarResolveDataCalendar();
   return googleCalendarRefreshOwner();
 }
 
@@ -558,5 +820,6 @@ function googleCalendarLogout() {
   googleTokenExpiry = 0;
   googleProfile = null;
   googleOwnerCalendar = null;
+  googleDataCalendar = null;
   localStorage.removeItem(AUTH_TOKEN_KEY);
 }

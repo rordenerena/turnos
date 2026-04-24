@@ -391,6 +391,26 @@ async function refreshVisibleSource() {
   }
 }
 
+async function syncImportedCalendarsAfterBootstrap() {
+  const previousImports = storeGetImportedMap();
+  const sameAccount = storeImportedAccountMatches(googleProfile);
+  const canReuseLocalMirror = sameAccount;
+  let remoteImports = await googleCalendarListImportedConfigs();
+
+  if (!remoteImports.length && canReuseLocalMirror && Object.keys(previousImports).length) {
+    for (const item of Object.values(previousImports)) {
+      await googleCalendarUpsertImportedConfig(item);
+    }
+    remoteImports = await googleCalendarListImportedConfigs();
+  }
+
+  storeReplaceImportedMap(remoteImports, {
+    preserveCache: canReuseLocalMirror,
+    previousImports: canReuseLocalMirror ? previousImports : {},
+  });
+  storeSaveImportedAccount(googleProfile);
+}
+
 async function deleteEverything() {
   if (!confirm('¿Eliminar el calendario de Turnos y todas las suscripciones locales?')) return;
   if (!confirm('⚠️ Esta acción es irreversible. ¿Seguro?')) return;
@@ -401,6 +421,7 @@ async function deleteEverything() {
     return;
   }
   storeClearImports();
+  storeClearImportedAccount();
   localStorage.removeItem(ACTIVE_KEY);
   googleCalendarLogout();
   toast('Todo eliminado ✓');
@@ -427,6 +448,7 @@ async function bootstrapAuthorizedApp() {
   const savedActiveId = storeGetActive();
   const hasUrlImport = (location.hash || '').startsWith('#ical=');
   currentCal = await googleCalendarBootstrap();
+  await syncImportedCalendarsAfterBootstrap();
   storeSetActive(currentCal.id);
   renderCalendarTabs();
   calRender();
