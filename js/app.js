@@ -525,11 +525,20 @@ function ensureWritableTabVisibility() {
   return currentVisibleTab();
 }
 
-async function restoreActiveSource(savedActiveId) {
+function renderAuthorizedAppShell() {
+  renderCalendarTabs();
+  calRender();
+  renderPatternsList();
+  renderImportedList();
+  syncOwnerActionCopy();
+}
+
+async function restoreActiveSource(savedActiveId, options = {}) {
+  const { refresh = true } = options;
   if (!savedActiveId || !googleOwnerCalendar || savedActiveId === googleOwnerCalendar.id) return false;
   if (!storeGetImportedById(savedActiveId)) return false;
   try {
-    await selectCalendar(savedActiveId);
+    await selectCalendar(savedActiveId, { refresh });
     return currentCal && currentCal.id === savedActiveId;
   } catch (error) {
     console.warn('No se pudo restaurar el calendario activo', error);
@@ -537,7 +546,8 @@ async function restoreActiveSource(savedActiveId) {
   }
 }
 
-async function selectCalendar(id) {
+async function selectCalendar(id, options = {}) {
+  const { refresh = true } = options;
   if (googleOwnerCalendar && id === googleOwnerCalendar.id) {
     currentCal = googleOwnerCalendar;
     storeSetActive(id);
@@ -554,6 +564,8 @@ async function selectCalendar(id) {
   storeSetActive(id);
   renderCalendarTabs();
   calRender();
+  syncOwnerActionCopy();
+  if (!refresh) return;
   try {
     currentCal = await shareRefreshImportedCalendar(id, { silent: true });
     renderCalendarTabs();
@@ -582,11 +594,35 @@ async function syncImportedCalendarsAfterBootstrap() {
   const sameAccount = storeImportedAccountMatches(googleProfile);
   const canReuseLocalMirror = sameAccount;
   let remoteImports = await googleCalendarListImportedConfigs();
+  let shouldReloadRemoteImports = false;
+
+  const hasSnapshotData = meta => {
+    if (!meta) return false;
+    const shiftCount = Number(meta?.counts?.shifts || 0);
+    const eventCount = Number(meta?.counts?.events || 0);
+    if (shiftCount || eventCount || meta?.lastSyncedAt) return true;
+    const shifts = meta?.cache?.shifts || {};
+    const events = meta?.cache?.events || {};
+    return Object.keys(shifts).length > 0 || Object.keys(events).length > 0;
+  };
 
   if (!remoteImports.length && canReuseLocalMirror && Object.keys(previousImports).length) {
     for (const item of Object.values(previousImports)) {
       await googleCalendarUpsertImportedConfig(item);
     }
+    shouldReloadRemoteImports = true;
+  } else if (canReuseLocalMirror && remoteImports.length) {
+    for (const remoteItem of remoteImports) {
+      const localMatch = storeFindImportedMatch(remoteItem, previousImports);
+      if (!localMatch) continue;
+      if (hasSnapshotData(localMatch) && !hasSnapshotData(remoteItem)) {
+        await googleCalendarUpsertImportedConfig(localMatch);
+        shouldReloadRemoteImports = true;
+      }
+    }
+  }
+
+  if (shouldReloadRemoteImports) {
     remoteImports = await googleCalendarListImportedConfigs();
   }
 
@@ -595,6 +631,38 @@ async function syncImportedCalendarsAfterBootstrap() {
     previousImports: canReuseLocalMirror ? previousImports : {},
   });
   storeSaveImportedAccount(googleProfile);
+
+  if (currentCal?.readonly) {
+    const syncedMeta = storeGetImportedById(currentCal.id);
+    if (syncedMeta) currentCal = storeBuildImportedSource(syncedMeta);
+  }
+  renderCalendarTabs();
+  renderImportedList();
+  calRender();
+}
+
+function bootstrapAuthorizedAppDeferredTasks(savedActiveId, hasUrlImport) {
+  window.setTimeout(async () => {
+    try {
+      await syncImportedCalendarsAfterBootstrap();
+
+      if (hasUrlImport) {
+        try {
+          await shareCheckUrl();
+        } catch (error) {
+          toast(`No se pudo importar el iCal: ${error.message}`);
+        }
+        return;
+      }
+
+      if (currentCal?.id === googleOwnerCalendar?.id) {
+        const restored = await restoreActiveSource(savedActiveId, { refresh: false });
+        if (!restored && currentCal) storeSetActive(currentCal.id);
+      }
+    } catch (error) {
+      console.warn('No se pudo sincronizar los importados en background', error);
+    }
+  }, 0);
 }
 
 async function deleteEverything() {
@@ -633,17 +701,12 @@ async function bootstrapAuthorizedApp() {
   googleCalendarShowAuth(false);
   const savedActiveId = storeGetActive();
   const hasUrlImport = (location.hash || '').startsWith('#ical=');
-  currentCal = await googleCalendarBootstrap();
-  await syncImportedCalendarsAfterBootstrap();
+  currentCal = await googleCalendarBootstrap({ deferDataCalendar: true });
   storeSetActive(currentCal.id);
-  renderCalendarTabs();
-  calRender();
-  renderPatternsList();
-  renderImportedList();
-  syncOwnerActionCopy();
+  renderAuthorizedAppShell();
 
   if (!hasUrlImport) {
-    const restored = await restoreActiveSource(savedActiveId);
+    const restored = await restoreActiveSource(savedActiveId, { refresh: false });
     if (!restored) storeSetActive(currentCal.id);
   }
 
@@ -651,13 +714,7 @@ async function bootstrapAuthorizedApp() {
   if (savedTab) switchTab(savedTab);
   else switchTab('calendar');
 
-  if (hasUrlImport) {
-    try {
-      await shareCheckUrl();
-    } catch (error) {
-      toast(`No se pudo importar el iCal: ${error.message}`);
-    }
-  }
+  bootstrapAuthorizedAppDeferredTasks(savedActiveId, hasUrlImport);
 
   await maybeOpenTurnosDuplicateDialog();
 }

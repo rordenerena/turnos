@@ -210,12 +210,17 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .share-url{font-size:.7rem;overflow-wrap:anywhere;word-break:break-word;white-space:normal;line-height:1.4;color:var(--muted);margin:8px 0}
 .imported-item{background:var(--card);padding:10px;border-radius:var(--radius);border:1px solid var(--border);margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .imported-item .imp-body{flex:1;min-width:0}
+.imported-item .imp-name-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .imported-item .imp-name{font-weight:600;font-size:.9rem}
 .imported-item .imp-owner{font-size:.75rem;color:var(--muted);margin-top:2px}
 .imported-item .imp-date{font-size:.7rem;color:var(--muted)}
 .imported-item .imp-url{font-size:.7rem;color:var(--muted);overflow-wrap:anywhere;word-break:break-word;white-space:normal;line-height:1.4;margin-top:2px}
 .imported-item .imp-actions{flex-shrink:0;align-self:center;display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
 .imported-item .imp-actions .btn{display:inline-flex;align-items:center;justify-content:center}
+
+.backup-badge{display:inline-flex;align-items:center;justify-content:center;padding:2px 8px;border-radius:999px;border:1px solid currentColor;font-size:.68rem;font-weight:700;line-height:1.2;white-space:nowrap}
+.backup-badge-remote{color:var(--readonly-banner-success);background:rgba(52,168,83,.1)}
+.backup-badge-local{color:var(--readonly-banner-error);background:rgba(255,99,71,.1)}
 
 /* Dialogs */
 .dialog-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:180;padding:16px}

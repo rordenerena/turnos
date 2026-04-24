@@ -8,6 +8,7 @@ const TURNOS_DATA_CALENDAR_SUMMARY = 'Turnos · Datos';
 const TURNOS_DATA_CALENDAR_MARKER = 'turnosDataApp=1';
 const TURNOS_DATA_CONFIG_KIND = 'imported-config';
 const TURNOS_DATA_CONFIG_DATE = '2000-01-01';
+const TURNOS_DATA_CONFIG_VERSION = 2;
 
 let googleToken = null;
 let googleTokenExpiry = 0;
@@ -17,6 +18,7 @@ let googleReady = false;
 let googleOwnerCalendar = null;
 let googleDataCalendar = null;
 let googleTurnosDuplicateSummary = null;
+let googleDataCalendarReadyPromise = null;
 let _googleLoginResolver = null;
 let _googleLoginRejecter = null;
 
@@ -358,6 +360,16 @@ async function googleCalendarResolveDataCalendar() {
   };
   storeSaveDataMeta(meta);
   return googleDataCalendar;
+}
+
+async function googleCalendarEnsureDataCalendarReady() {
+  if (googleDataCalendar?.calendarId) return googleDataCalendar;
+  if (googleDataCalendarReadyPromise) return googleDataCalendarReadyPromise;
+  googleDataCalendarReadyPromise = googleCalendarResolveDataCalendar()
+    .finally(() => {
+      googleDataCalendarReadyPromise = null;
+    });
+  return googleDataCalendarReadyPromise;
 }
 
 function googleCalendarEventPrivate(event) {
@@ -806,7 +818,99 @@ async function googleCalendarRefreshOwner(options = {}) {
 }
 
 function googleCalendarImportedConfigDescription(payload) {
-  return JSON.stringify(payload, null, 2);
+  return JSON.stringify(payload);
+}
+
+function googleCalendarCompactImportedSnapshot(source) {
+  const rawShifts = source?.cache?.shifts || source?.shifts || {};
+  const rawEvents = source?.cache?.events || source?.events || {};
+  const shifts = {};
+  const events = {};
+
+  Object.entries(rawShifts).forEach(([date, items]) => {
+    const compactItems = (items || [])
+      .filter(item => item?.type)
+      .map(item => ({
+        t: item.type,
+        ...(item.note ? { n: String(item.note) } : {}),
+        ...(item.source?.isPatternInstance ? { p: 1 } : {}),
+      }));
+    if (compactItems.length) shifts[date] = compactItems;
+  });
+
+  Object.entries(rawEvents).forEach(([date, items]) => {
+    const compactItems = (items || [])
+      .map(item => ({ x: String(item?.text || '').trim() }))
+      .filter(item => item.x);
+    if (compactItems.length) events[date] = compactItems;
+  });
+
+  const snapshot = {
+    ls: source?.lastSyncedAt || null,
+    c: {
+      shifts: Number(source?.counts?.shifts || 0),
+      events: Number(source?.counts?.events || 0),
+    },
+    cache: {},
+  };
+
+  if (Object.keys(shifts).length) snapshot.cache.s = shifts;
+  if (Object.keys(events).length) snapshot.cache.e = events;
+
+  if (!snapshot.ls && !snapshot.c.shifts && !snapshot.c.events && !Object.keys(snapshot.cache).length) {
+    return null;
+  }
+
+  return snapshot;
+}
+
+function googleCalendarExpandImportedSnapshot(snapshot) {
+  const raw = snapshot && typeof snapshot === 'object' ? snapshot : {};
+  const shifts = {};
+  const events = {};
+
+  Object.entries(raw.cache?.s || {}).forEach(([date, items]) => {
+    const normalized = (items || [])
+      .filter(item => item?.t)
+      .map(item => ({
+        type: item.t,
+        note: item.n || '',
+        source: {
+          kind: 'remote-snapshot',
+          ...(item.p ? { isPatternInstance: true } : {}),
+        },
+      }));
+    if (normalized.length) shifts[date] = normalized;
+  });
+
+  Object.entries(raw.cache?.e || {}).forEach(([date, items]) => {
+    const normalized = (items || [])
+      .map(item => ({ text: String(item?.x || '').trim(), source: { kind: 'remote-snapshot' } }))
+      .filter(item => item.text);
+    if (normalized.length) events[date] = normalized;
+  });
+
+  const counts = {
+    shifts: Number(raw.c?.shifts || 0),
+    events: Number(raw.c?.events || 0),
+  };
+
+  return {
+    cache: { shifts, events },
+    counts,
+    lastSyncedAt: raw.ls || null,
+  };
+}
+
+function googleCalendarMergeImportedConfigConfirmation(source, event) {
+  const remoteMeta = googleCalendarHydrateImportedFromConfigEvent(event);
+  return {
+    ...source,
+    ...remoteMeta,
+    cache: source.cache || remoteMeta.cache,
+    counts: source.counts || remoteMeta.counts,
+    lastSyncedAt: source.lastSyncedAt || remoteMeta.lastSyncedAt,
+  };
 }
 
 async function googleCalendarBuildDeterministicEventId(canonicalKey) {
@@ -843,8 +947,9 @@ function googleCalendarImportedConfigPayload(source) {
   const canonicalKey = source.canonicalKey || storeImportedCanonicalKey(source);
   const turnosImportId = source.turnosImportId || storeImportedStableId(source);
   const googleCalendarId = storeCleanIdentityValue(source.googleCalendarId) || null;
+  const snapshot = googleCalendarCompactImportedSnapshot(source);
   const payload = {
-    version: 1,
+    version: TURNOS_DATA_CONFIG_VERSION,
     turnosImportId,
     canonicalKey,
     sourceType: source.sourceType || (googleCalendarId ? 'google-public' : 'ical'),
@@ -855,6 +960,7 @@ function googleCalendarImportedConfigPayload(source) {
     ownerName: storeCleanIdentityValue(source.ownerName),
     ownerEmail: storeCleanIdentityValue(source.ownerEmail),
     updatedAt: new Date().toISOString(),
+    ...(snapshot ? { snapshot } : {}),
   };
   return {
     summary: `Importado · ${storeImportedCalendarName({ ...source, canonicalKey, turnosImportId })}`,
@@ -891,6 +997,7 @@ function googleCalendarIsNotFoundError(error) {
 function googleCalendarHydrateImportedFromConfigEvent(event) {
   const priv = googleCalendarEventPrivate(event);
   const payload = googleCalendarImportedConfigParseDescription(event);
+  const snapshot = googleCalendarExpandImportedSnapshot(payload.snapshot);
   const meta = {
     id: payload.turnosImportId || priv.turnosImportId || storeImportedStableId({
       googleCalendarId: payload.googleCalendarId || priv.turnosGoogleCalendarId || '',
@@ -907,6 +1014,9 @@ function googleCalendarHydrateImportedFromConfigEvent(event) {
     ownerEmail: payload.ownerEmail || '',
     remoteConfigEventId: event.id,
     remoteUpdatedAt: event.updated || null,
+    cache: snapshot.cache,
+    counts: snapshot.counts,
+    lastSyncedAt: snapshot.lastSyncedAt,
   };
   if (!meta.turnosImportId) meta.turnosImportId = meta.id;
   if (!meta.canonicalKey) meta.canonicalKey = storeImportedCanonicalKey(meta);
@@ -914,6 +1024,7 @@ function googleCalendarHydrateImportedFromConfigEvent(event) {
 }
 
 async function googleCalendarListImportedConfigEvents() {
+  await googleCalendarEnsureDataCalendarReady();
   const meta = storeGetDataMeta();
   if (!meta?.calendarId) throw new Error('No hay calendario privado de datos configurado');
   const events = await googleCalendarListAll(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(meta.calendarId)}/events`, {
@@ -931,6 +1042,7 @@ async function googleCalendarListImportedConfigs() {
 }
 
 async function googleCalendarUpsertImportedConfig(source) {
+  await googleCalendarEnsureDataCalendarReady();
   const meta = storeGetDataMeta();
   if (!meta?.calendarId) throw new Error('No hay calendario privado de datos configurado');
   const canonicalKey = source.canonicalKey || storeImportedCanonicalKey(source);
@@ -960,6 +1072,7 @@ async function googleCalendarUpsertImportedConfig(source) {
 }
 
 async function googleCalendarDeleteImportedConfig(source) {
+  await googleCalendarEnsureDataCalendarReady();
   const meta = storeGetDataMeta();
   if (!meta?.calendarId) throw new Error('No hay calendario privado de datos configurado');
   const canonicalKey = typeof source === 'string'
@@ -1122,11 +1235,18 @@ async function googleCalendarDeleteEverythingRemote() {
   storeClearDataMeta();
 }
 
-async function googleCalendarBootstrap() {
+async function googleCalendarBootstrap(options = {}) {
+  const { deferDataCalendar = false } = options;
   if (!googleCalendarHasSession()) throw new Error('Necesitás iniciar sesión');
   await googleCalendarFetchProfile();
   await googleCalendarResolveAppCalendar();
-  await googleCalendarResolveDataCalendar();
+  if (deferDataCalendar) {
+    googleCalendarEnsureDataCalendarReady().catch(error => {
+      console.warn('No se pudo preparar el calendario privado de datos en background', error);
+    });
+  } else {
+    await googleCalendarEnsureDataCalendarReady();
+  }
   return googleCalendarRefreshOwner();
 }
 
@@ -1139,5 +1259,6 @@ function googleCalendarLogout() {
   googleProfile = null;
   googleOwnerCalendar = null;
   googleDataCalendar = null;
+  googleDataCalendarReadyPromise = null;
   localStorage.removeItem(AUTH_TOKEN_KEY);
 }

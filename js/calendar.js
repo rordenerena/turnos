@@ -252,7 +252,7 @@ function calRender() {
     const refreshState = readonlyBannerRefreshState.calendarId === currentCal.id ? readonlyBannerRefreshState.status : 'idle';
     const ownerIdentity = storeOwnerIdentityText(currentCal);
     banner.innerHTML = `
-      <span class="readonly-banner-copy">👁 ${escapeHtml(currentCal.name)} (solo lectura)${ownerIdentity ? `<span class="readonly-banner-owner"> · Propietario: ${escapeHtml(ownerIdentity)}</span>` : ''}</span>
+      <span class="readonly-banner-copy">👁 ${escapeHtml(currentCal.name)} (solo lectura) <span class="backup-badge backup-badge-${storeImportedBackupTone(currentCal)}">${escapeHtml(storeImportedBackupLabel(currentCal))}</span>${ownerIdentity ? `<span class="readonly-banner-owner"> · Propietario: ${escapeHtml(ownerIdentity)}</span>` : ''}</span>
       <span class="readonly-banner-actions">
         <button
           type="button"

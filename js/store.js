@@ -53,6 +53,18 @@ function storeImportedCalendarName(source) {
   return aliasName || storeImportedCalendarAutoName(source);
 }
 
+function storeImportedHasRemoteBackup(source) {
+  return !!(storeCleanIdentityValue(source?.remoteConfigEventId) || storeCleanIdentityValue(source?.remoteUpdatedAt));
+}
+
+function storeImportedBackupLabel(source) {
+  return storeImportedHasRemoteBackup(source) ? 'Backup en Google' : 'Solo local';
+}
+
+function storeImportedBackupTone(source) {
+  return storeImportedHasRemoteBackup(source) ? 'remote' : 'local';
+}
+
 function storeNormalizeImportedAlias(aliasName, source) {
   const cleanAlias = storeCleanImportedAlias(aliasName);
   if (!cleanAlias) return '';
@@ -274,6 +286,8 @@ function storeBuildImportedSource(meta) {
     patterns: [],
     lastSyncedAt: meta.lastSyncedAt || null,
     counts: meta.counts || { shifts: 0, events: 0 },
+    remoteConfigEventId: meta.remoteConfigEventId || '',
+    remoteUpdatedAt: meta.remoteUpdatedAt || null,
     ...identity,
   };
 }

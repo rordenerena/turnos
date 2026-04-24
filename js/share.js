@@ -65,6 +65,15 @@ function clearImportedRefreshState(id) {
   delete importedRefreshState[id];
 }
 
+function shareImportedBackupBadgeMarkup(meta) {
+  return `<span class="backup-badge backup-badge-${storeImportedBackupTone(meta)}">${escapeHtml(storeImportedBackupLabel(meta))}</span>`;
+}
+
+async function sharePersistImportedRemoteConfig(meta) {
+  const remoteEvent = await googleCalendarUpsertImportedConfig(meta);
+  return storeSaveImported(googleCalendarMergeImportedConfigConfirmation(meta, remoteEvent));
+}
+
 async function shareGenerate(options = {}) {
   const { toastSuccess = true, toastError = true } = options;
   const ownerCal = typeof getOwnerCalendar === 'function' ? getOwnerCalendar() : currentCal;
@@ -359,10 +368,12 @@ async function shareResolveImportedSource(meta) {
 }
 
 async function shareRefreshImportedCalendar(id, options = {}) {
+  const { persistRemoteSnapshot = false } = options;
   const meta = storeGetImportedById(id);
   if (!meta?.icalUrl) throw new Error('No existe esa suscripción');
+  const previousMeta = { ...meta };
   const source = await shareResolveImportedSource(meta);
-  const savedMeta = storeSaveImported({
+  let savedMeta = storeSaveImported({
     id: source.id,
     turnosImportId: source.turnosImportId || source.id,
     canonicalKey: source.canonicalKey || storeImportedCanonicalKey(source),
@@ -380,6 +391,15 @@ async function shareRefreshImportedCalendar(id, options = {}) {
       events: source.events,
     },
   });
+  if (persistRemoteSnapshot) {
+    try {
+      savedMeta = await sharePersistImportedRemoteConfig(savedMeta);
+    } catch (error) {
+      storeSaveImported(previousMeta);
+      if (currentCal && currentCal.id === id) currentCal = storeBuildImportedSource(previousMeta);
+      throw error;
+    }
+  }
   if (!options.silent) renderImportedList();
   const resolvedSource = {
     ...source,
@@ -388,6 +408,8 @@ async function shareRefreshImportedCalendar(id, options = {}) {
     canonicalKey: savedMeta.canonicalKey || source.canonicalKey || storeImportedCanonicalKey(savedMeta),
     name: storeImportedCalendarName(savedMeta),
     aliasName: savedMeta.aliasName || '',
+    remoteConfigEventId: savedMeta.remoteConfigEventId || '',
+    remoteUpdatedAt: savedMeta.remoteUpdatedAt || null,
   };
   if (currentCal && currentCal.id === id) {
     currentCal = resolvedSource;
@@ -397,10 +419,10 @@ async function shareRefreshImportedCalendar(id, options = {}) {
 }
 
 async function shareRefreshImportedAction(id, options = {}) {
-  const { silent = false, toastSuccess = true, toastError = true, onStateChange = null } = options;
+  const { silent = false, toastSuccess = true, toastError = true, onStateChange = null, persistRemoteSnapshot = true } = options;
   try {
     if (typeof onStateChange === 'function') onStateChange('refreshing');
-    const source = await shareRefreshImportedCalendar(id, { silent });
+    const source = await shareRefreshImportedCalendar(id, { silent, persistRemoteSnapshot });
     if (typeof onStateChange === 'function') onStateChange('success', source);
     if (toastSuccess) toast('Calendario actualizado ✓');
     return source;
@@ -429,32 +451,15 @@ async function shareImportByUrl(payload) {
     name: storeImportedCalendarAutoName(identity),
     ...identity,
   });
-  const importedMeta = storeSaveImported({
+  const validatedMeta = storeSaveImported({
     id: stableId,
     turnosImportId: stableId,
-    canonicalKey: storeImportedCanonicalKey({ googleCalendarId, icalUrl }),
-    icalUrl,
-    googleCalendarId,
-    sourceType: googleCalendarId ? 'google-public' : 'ical',
-    name: storeImportedCalendarAutoName(identity),
-    ...identity,
-  });
-  try {
-    await googleCalendarUpsertImportedConfig(importedMeta);
-  } catch (error) {
-    if (previousMeta) storeSaveImported(previousMeta);
-    else storeDeleteImported(importedMeta.id);
-    throw error;
-  }
-  const savedMeta = storeSaveImported({
-    id: importedMeta.id,
-    turnosImportId: importedMeta.turnosImportId || importedMeta.id,
-    canonicalKey: validatedSource.canonicalKey || importedMeta.canonicalKey,
-    name: validatedSource.name,
-    aliasName: importedMeta.aliasName,
+    canonicalKey: validatedSource.canonicalKey || storeImportedCanonicalKey({ googleCalendarId, icalUrl }),
     icalUrl: validatedSource.icalUrl,
-    googleCalendarId: validatedSource.googleCalendarId || importedMeta.googleCalendarId || null,
+    googleCalendarId: validatedSource.googleCalendarId || googleCalendarId,
     sourceType: validatedSource.sourceType,
+    name: validatedSource.name,
+    aliasName: previousMeta?.aliasName,
     ownerName: validatedSource.ownerName,
     ownerEmail: validatedSource.ownerEmail,
     lastSyncedAt: validatedSource.lastSyncedAt,
@@ -464,6 +469,14 @@ async function shareImportByUrl(payload) {
       events: validatedSource.events,
     },
   });
+  try {
+    await sharePersistImportedRemoteConfig(validatedMeta);
+  } catch (error) {
+    if (previousMeta) storeSaveImported(previousMeta);
+    else storeDeleteImported(validatedMeta.id);
+    throw error;
+  }
+  const savedMeta = storeGetImportedById(validatedMeta.id) || validatedMeta;
   return {
     ...validatedSource,
     id: savedMeta.id,
@@ -471,6 +484,8 @@ async function shareImportByUrl(payload) {
     canonicalKey: savedMeta.canonicalKey || validatedSource.canonicalKey || storeImportedCanonicalKey(savedMeta),
     name: storeImportedCalendarName(savedMeta),
     aliasName: savedMeta.aliasName || '',
+    remoteConfigEventId: savedMeta.remoteConfigEventId || '',
+    remoteUpdatedAt: savedMeta.remoteUpdatedAt || null,
   };
 }
 
@@ -521,15 +536,15 @@ async function renameImportedModalSave(event) {
   }
 
   try {
-    await googleCalendarUpsertImportedConfig(updatedMeta);
+    const persistedMeta = await sharePersistImportedRemoteConfig(updatedMeta);
     renameImportedModalCancel();
-    if (currentCal && currentCal.id === id) currentCal = storeBuildImportedSource(updatedMeta);
+    if (currentCal && currentCal.id === id) currentCal = storeBuildImportedSource(persistedMeta);
     renderImportedList();
     renderCalendarTabs();
     calRender();
 
-    const hasAlias = !!storeCleanImportedAlias(updatedMeta.aliasName);
-    toast(hasAlias ? `Alias guardado: ${updatedMeta.aliasName}` : `Alias eliminado: ${storeImportedCalendarName(updatedMeta)}`);
+    const hasAlias = !!storeCleanImportedAlias(persistedMeta.aliasName);
+    toast(hasAlias ? `Alias guardado: ${persistedMeta.aliasName}` : `Alias eliminado: ${storeImportedCalendarName(persistedMeta)}`);
   } catch (error) {
     const restoredMeta = storeSaveImported(previousMeta);
     if (currentCal && currentCal.id === id) currentCal = storeBuildImportedSource(restoredMeta);
@@ -585,7 +600,10 @@ function renderImportedList() {
       return `
       <div class="imported-item">
         <div class="imp-body">
-          <div class="imp-name">👁 ${escapeHtml(storeImportedCalendarName(meta))}${calItemCount(meta)}</div>
+          <div class="imp-name-row">
+            <div class="imp-name">👁 ${escapeHtml(storeImportedCalendarName(meta))}${calItemCount(meta)}</div>
+            ${shareImportedBackupBadgeMarkup(meta)}
+          </div>
           ${shareOwnerIdentityMarkup(meta)}
           <div class="imp-date">Actualizado: ${meta.lastSyncedAt ? new Date(meta.lastSyncedAt).toLocaleString('es') : 'pendiente'}</div>
         </div>
