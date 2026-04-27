@@ -7,7 +7,7 @@
   <title>Calendario de Turnos</title>
   <link rel="stylesheet" href="css/styles.css">
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="icons/icon-192.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/base.png" type="image/svg+xml">
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.2.2/build/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -202,6 +202,10 @@
     <!-- Share Tab -->
     <section id="tab-shared" class="tab-content">
       <h2 class="section-title">Compartir</h2>
+      <div class="card legal-warning-card">
+        <h3>Aviso importante</h3>
+        <p class="hint legal-warning-text">Tu calendario principal de Turnos usa un enlace público de lectura para compartir e importar. Eso significa que cualquier persona que obtenga ese enlace puede ver su contenido. Comparte solo con personas de confianza.</p>
+      </div>
       <div id="qr-container" class="hidden" style="text-align:center">
         <canvas id="qr-canvas"></canvas>
         <p id="share-url" class="share-url"></p>
@@ -229,6 +233,16 @@
         <h3>Cuenta Google</h3>
         <p id="google-user-name" class="hint" style="margin:0 0 8px"></p>
         <button class="btn btn-danger btn-sm" onclick="logoutGoogle()">Cerrar sesión</button>
+      </div>
+      <div class="card legal-info-card">
+        <h3>Información legal</h3>
+        <p class="hint legal-info-copy">Turnos es una app gratuita. Ahora mismo no muestra publicidad. Si en el futuro se añadiera publicidad o cambiara el tratamiento de datos, se avisará y estos textos se actualizarán.</p>
+        <p class="hint legal-info-copy">Aviso importante: el calendario principal de la app puede quedar accesible en lectura pública mediante Google Calendar para permitir compartir e importar. No lo uses para datos sensibles.</p>
+        <div class="legal-info-links">
+          <a class="btn" href="privacy.html">Política de privacidad</a>
+          <a class="btn" href="terms.html">Condiciones del servicio</a>
+        </div>
+        <p class="hint legal-info-footnote">Cada documento mantiene una fuente principal consultable directamente como asset dentro de la app.</p>
       </div>
       <div class="card hidden" id="danger-section">
         <h3>Peligro</h3>

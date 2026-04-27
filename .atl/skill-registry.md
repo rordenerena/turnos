@@ -57,6 +57,6 @@ Pre-digested rules per skill. Delegators copy matching blocks into sub-agent pro
 
 | File | Path | Notes |
 |------|------|-------|
-| — | — | No project-level convention files detected (`AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `GEMINI.md`, `copilot-instructions.md`). |
+| — | — | No convention files detected at the project root (`AGENTS.md`, `agents.md`, `CLAUDE.md`, `.cursorrules`, `GEMINI.md`, `copilot-instructions.md`). |
 
 Read the convention files listed above for project-specific patterns and rules. All referenced paths have been extracted — no need to read index files to discover more.

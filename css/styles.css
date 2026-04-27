@@ -218,6 +218,24 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:v
 .imported-item .imp-actions{flex-shrink:0;align-self:center;display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
 .imported-item .imp-actions .btn{display:inline-flex;align-items:center;justify-content:center}
 
+.legal-warning-card{margin-bottom:12px}
+.legal-warning-text,.legal-info-copy{margin-bottom:10px;line-height:1.45}
+.legal-info-links{display:flex;flex-wrap:wrap;gap:8px}
+.legal-info-links .btn{text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.legal-info-footnote{margin-bottom:0}
+
+.legal-page-body{min-height:100vh;padding:0 12px 20px}
+.legal-page-shell{width:100%;max-width:760px;margin:0 auto;padding:16px 0 calc(24px + env(safe-area-inset-bottom,0px))}
+.legal-page-header{padding:8px 0 14px}
+.legal-page-header h1{font-size:1.35rem;line-height:1.2;margin:12px 0 8px}
+.legal-page-card{line-height:1.6}
+.legal-source-card{margin-bottom:12px}
+.legal-source-copy{margin-bottom:0;line-height:1.45}
+.legal-page-card h2{font-size:1rem;margin-bottom:8px}
+.legal-page-card p + p{margin-top:10px}
+.legal-list{padding-left:18px}
+.legal-list li + li{margin-top:6px}
+
 .backup-badge{display:inline-flex;align-items:center;justify-content:center;padding:2px 8px;border-radius:999px;border:1px solid currentColor;font-size:.68rem;font-weight:700;line-height:1.2;white-space:nowrap}
 .backup-badge-remote{color:var(--readonly-banner-success);background:rgba(52,168,83,.1)}
 .backup-badge-local{color:var(--readonly-banner-error);background:rgba(255,99,71,.1)}
