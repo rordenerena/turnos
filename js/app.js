@@ -13,7 +13,7 @@ let turnosDuplicateDialogState = {
 };
 const VIEW_KEY = 'turnos_view';
 const HEADER_VIEW_CONFIG = {
-  calendar: { title: '📅 Turnos', button: 'menu' },
+  calendar: { title: 'Turnos', button: 'menu' },
   patterns: { title: 'Patrones', button: 'menu' },
   shared: { title: 'Compartir', button: 'menu' },
   settings: { title: 'Configuración', button: 'menu' },
@@ -177,7 +177,10 @@ function syncHeaderState(view = currentVisibleTab()) {
   const config = HEADER_VIEW_CONFIG[view] || HEADER_VIEW_CONFIG.calendar;
   const title = document.getElementById('header-title');
   const button = document.getElementById('header-menu-button');
-  if (title) title.textContent = config.title;
+  if (title) {
+    title.textContent = config.title;
+    title.classList.toggle('header-title-app', view === 'calendar');
+  }
   syncPrimaryDrawerState(view);
   if (config.button === 'back') {
     primaryDrawerOpen = false;
